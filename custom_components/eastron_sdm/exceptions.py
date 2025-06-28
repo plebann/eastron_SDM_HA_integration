@@ -2,7 +2,7 @@
 
 from homeassistant.exceptions import HomeAssistantError
 
-class SDMConnectionError(HomeAssistantError):
+class SDMConnError(HomeAssistantError):
     """Error connecting to SDM device."""
 
 class SDMDeviceNotFoundError(HomeAssistantError):

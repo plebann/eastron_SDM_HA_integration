@@ -17,7 +17,7 @@ except ImportError:
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN, CATEGORY_BASIC, CATEGORY_ADVANCED, CATEGORY_DIAGNOSTIC
-from custom_components.eastron_sdm.exceptions import SDMConnectionError
+from .exceptions import SDMConnError
 from .device_models import async_detect_device_model
 
 _LOGGER = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self.context["connection"] = dict(user_input)
                         self.context["connection"]["model"] = model
                         return await self.async_step_name()
-                except SDMConnectionError as exc:
+                except SDMConnError as exc:
                     _LOGGER.error("Connection error: %s", exc)
                     errors["base"] = "cannot_connect"
                 except Exception as exc:
@@ -216,7 +216,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_validate_connection(self, host: str, port: int, unit_id: int):
         """Validate connection to the SDM device and return client, with retries."""
         if AsyncModbusTcpClient is None:
-            raise SDMConnectionError("pymodbus not installed")
+            raise SDMConnError("pymodbus not installed")
 
         last_exc = None
         for attempt in range(3):
@@ -226,13 +226,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 result = await client.read_holding_registers(0x0000)
                 if not hasattr(result, "registers") or result.isError():
                     await client.close()
-                    raise SDMConnectionError("No response or error from device")
+                    raise SDMConnError("No response or error from device")
                 return client
             except Exception as exc:
                 last_exc = exc
                 _LOGGER.warning("Connection attempt %d failed: %s", attempt + 1, exc)
                 await asyncio.sleep(1)
-        raise SDMConnectionError(f"Connection failed after retries: {last_exc}") from last_exc
+        raise SDMConnError(f"Connection failed after retries: {last_exc}") from last_exc
 
     @staticmethod
     @callback
