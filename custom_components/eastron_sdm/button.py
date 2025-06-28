@@ -67,7 +67,10 @@ class SDMButtonEntity(ButtonEntity):
         """Initialize the button entity."""
         self.coordinator = coordinator
         self.entity_def = entity_def
-        self._attr_unique_id = f"{device_name}_{entity_def.key}"
+        key = getattr(entity_def, "parameter_key", None)
+        if key is None:
+            key = getattr(entity_def, "address", "unknown")
+        self._attr_unique_id = f"{device_name}_{key}"
         self._attr_translation_key = entity_def.key
         self._attr_name = None  # Use translation
         self._attr_entity_category = entity_def.entity_category

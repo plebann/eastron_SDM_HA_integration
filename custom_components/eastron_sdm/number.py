@@ -73,7 +73,10 @@ class SDMNumberEntity(NumberEntity):
         """Initialize the number entity."""
         self.coordinator = coordinator
         self.entity_def = entity_def
-        self._attr_unique_id = f"{device_name}_{entity_def.key}"
+        key = getattr(entity_def, "parameter_key", None)
+        if key is None:
+            key = getattr(entity_def, "address", "unknown")
+        self._attr_unique_id = f"{device_name}_{key}"
         self._attr_translation_key = entity_def.key
         self._attr_name = None  # Use translation
         self._attr_native_min_value = entity_def.min_value
