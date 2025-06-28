@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import SDMDataUpdateCoordinator
+from .coordinator import SDMMultiTierCoordinator
 from .device_models import get_button_entities_for_model
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,15 +22,31 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Eastron SDM button entities from a config entry."""
-    coordinator: SDMDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    device_model = coordinator.device_model
+    multi_tier_coordinator: SDMMultiTierCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    device_model = entry.data.get("model", "SDM120")
 
     # Get button entity definitions from device_models.py
     button_entities = get_button_entities_for_model(device_model)
     device_name = entry.data.get("device_name", "eastron_sdm")
 
+    # Map register category to polling tier
+    def get_tier_for_category(category: str) -> str:
+        if category == "Basic":
+            return "fast"
+        elif category == "Advanced":
+            return "normal"
+        elif category == "Diagnostic":
+            return "slow"
+        else:
+            return "normal"
+
     entities = [
-        SDMButtonEntity(coordinator, entry, entity_def, device_name)
+        SDMButtonEntity(
+            multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
+            entry,
+            entity_def,
+            device_name,
+        )
         for entity_def in button_entities
     ]
 
@@ -43,7 +59,7 @@ class SDMButtonEntity(ButtonEntity):
 
     def __init__(
         self,
-        coordinator: SDMDataUpdateCoordinator,
+        coordinator,
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,

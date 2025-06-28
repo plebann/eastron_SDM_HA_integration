@@ -15,8 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Eastron SDM integration from a config entry."""
-    from datetime import timedelta
-    from .coordinator import SDMDataUpdateCoordinator
+    from .coordinator import SDMMultiTierCoordinator
     from .device_models import create_device_instance
 
     _LOGGER.debug("Setting up Eastron SDM integration for entry: %s", entry.entry_id)
@@ -38,17 +37,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         name=device_name,
     )
 
-    # Set polling interval (default: 30s, can be made configurable)
-    update_interval = timedelta(seconds=30)
-
-    coordinator = SDMDataUpdateCoordinator(
+    # Instantiate multi-tier coordinator
+    coordinator = SDMMultiTierCoordinator(
         hass=hass,
-        name=f"{device_name} Coordinator",
-        update_interval=update_interval,
         device=device,
+        name_prefix=f"{device_name} "
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh_all()
 
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
