@@ -39,6 +39,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     # Set device_name attribute for device registry
     device.device_name = device_name
+
+    # Initialize and connect pymodbus client
+    try:
+        from pymodbus.client import AsyncModbusTcpClient
+        device.client = AsyncModbusTcpClient(host=host, port=port)
+        await device.client.connect()
+    except Exception as exc:
+        _LOGGER.error("Failed to initialize Modbus client: %s", exc)
+        return False
+
     # Instantiate multi-tier coordinator
     coordinator = SDMMultiTierCoordinator(
         hass=hass,
