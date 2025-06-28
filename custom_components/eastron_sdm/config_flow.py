@@ -223,7 +223,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 client = AsyncModbusTcpClient(host=host, port=port)
                 await client.connect()
-                result = await client.read_holding_registers(0x0000, 2)
+                result = await client.read_holding_registers(0x0000)
                 if not hasattr(result, "registers") or result.isError():
                     await client.close()
                     raise SDMConnectionError("No response or error from device")
