@@ -30,12 +30,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create device instance (factory function must be implemented in device_models.py)
     device = create_device_instance(
         model=model,
+        unit_id=unit_id,
         host=host,
         port=port,
-        unit_id=unit_id,
+        timeout=timeout,
         name=device_name,
     )
-
+    # Set device_name attribute for device registry
+    device.device_name = device_name
     # Instantiate multi-tier coordinator
     coordinator = SDMMultiTierCoordinator(
         hass=hass,

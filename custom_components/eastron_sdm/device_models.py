@@ -81,9 +81,11 @@ class SDMDevice:
     def device_info(self) -> Dict[str, Any]:
         """Return Home Assistant device info dictionary."""
         model_name = self.model if self.model in ("SDM120", "SDM630") else "Unknown"
+        # Try to use device_name if present (set as attribute by integration)
+        device_name = getattr(self, "device_name", None)
         info = {
             "identifiers": {(self.host, self.unit_id)},
-            "name": self.model or "Eastron SDM",
+            "name": device_name or self.model or "Eastron SDM",
             "manufacturer": "Eastron",
             "model": model_name,
         }
@@ -232,11 +234,16 @@ async def async_detect_device_model(client: Any, unit_id: int) -> Optional[str]:
         # Try SDM630-specific register (Phase 2 L-N Voltage at 0x0002)
         result_630 = await client.read_holding_registers(0x0002)
         if hasattr(result_630, "registers") and not result_630.isError():
-            return "SDM630"
+            val_630 = result_630.registers[0]
+            # SDM630 should report a plausible voltage (e.g., > 50V), SDM120 will return 0 or nonsense
+            if val_630 > 50:
+                return "SDM630"
         # Try SDM120-specific register (Voltage at 0x0000)
         result_120 = await client.read_holding_registers(0x0000)
         if hasattr(result_120, "registers") and not result_120.isError():
-            return "SDM120"
+            val_120 = result_120.registers[0]
+            if val_120 > 50:
+                return "SDM120"
     except Exception as exc:
         _LOGGER.error("Device detection failed: %s", exc)
 
