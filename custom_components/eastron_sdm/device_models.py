@@ -230,11 +230,11 @@ async def async_detect_device_model(client: Any, unit_id: int) -> Optional[str]:
     """
     try:
         # Try SDM630-specific register (Phase 2 L-N Voltage at 0x0002)
-        result_630 = await client.read_holding_registers(0x0002, 2)
+        result_630 = await client.read_holding_registers(0x0002)
         if hasattr(result_630, "registers") and not result_630.isError():
             return "SDM630"
         # Try SDM120-specific register (Voltage at 0x0000)
-        result_120 = await client.read_holding_registers(0x0000, 2)
+        result_120 = await client.read_holding_registers(0x0000)
         if hasattr(result_120, "registers") and not result_120.isError():
             return "SDM120"
     except Exception as exc:

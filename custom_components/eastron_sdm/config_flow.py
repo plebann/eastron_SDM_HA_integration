@@ -100,7 +100,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     model = await async_detect_device_model(
                         client, unit_id
                     )
-                    await client.close()
+                    if client is not None:
+                        await client.close()
                     if not model:
                         errors["base"] = "cannot_detect_model"
                     else:
