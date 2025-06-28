@@ -23,7 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Extract config entry data
     host = entry.data.get("host")
-    port = entry.data.get("port", 502)
+    port = entry.data.get("port", 4196)
     unit_id = entry.data.get("unit_id", 1)
     model = entry.data.get("model")
     device_name = entry.data.get("device_name", f"SDM_{entry.entry_id}")
