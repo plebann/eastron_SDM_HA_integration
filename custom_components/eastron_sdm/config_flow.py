@@ -124,7 +124,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            description=description,
             title_translation_key="config.step.user.title",
             description_translation_key="config.step.user.description"
         )
