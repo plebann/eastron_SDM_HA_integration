@@ -81,8 +81,16 @@ class SDMSelectEntity(SelectEntity):
             translation_key = str(getattr(entity_def, "address", "unknown"))
         self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
-        self._attr_options = entity_def.options
-        self._attr_entity_category = getattr(entity_def, "category", None)
+        self._attr_options = entity_def.options if getattr(entity_def, "options", None) is not None else []
+        # Map string category to EntityCategory enum if needed
+        category = getattr(entity_def, "category", None)
+        from homeassistant.helpers.entity import EntityCategory
+        if category == "Config":
+            self._attr_entity_category = EntityCategory.CONFIG
+        elif category == "Diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        else:
+            self._attr_entity_category = None
         self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")

@@ -85,12 +85,20 @@ class SDMNumberEntity(NumberEntity):
             translation_key = str(getattr(entity_def, "address", "unknown"))
         self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
-        self._attr_native_min_value = entity_def.min_value
-        self._attr_native_max_value = entity_def.max_value
-        self._attr_native_step = entity_def.step
+        self._attr_native_min_value = entity_def.min_value if entity_def.min_value is not None else 0
+        self._attr_native_max_value = entity_def.max_value if entity_def.max_value is not None else 1
+        self._attr_native_step = entity_def.step if entity_def.step is not None else 1
         self._attr_native_unit_of_measurement = entity_def.units
         self._attr_device_class = entity_def.device_class
-        self._attr_entity_category = getattr(entity_def, "category", None)
+        # Map string category to EntityCategory enum if needed
+        category = getattr(entity_def, "category", None)
+        from homeassistant.helpers.entity import EntityCategory
+        if category == "Config":
+            self._attr_entity_category = EntityCategory.CONFIG
+        elif category == "Diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        else:
+            self._attr_entity_category = None
         self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")

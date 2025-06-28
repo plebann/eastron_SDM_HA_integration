@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -79,8 +80,18 @@ class SDMButtonEntity(ButtonEntity):
             translation_key = str(getattr(entity_def, "address", "unknown"))
         self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
-        self._attr_entity_category = getattr(entity_def, "category", None)
+        # Map string category to EntityCategory enum if needed
+        category = getattr(entity_def, "category", None)
+        if category == "Config":
+            self._attr_entity_category = EntityCategory.CONFIG
+        elif category == "Diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        else:
+            self._attr_entity_category = None
         self._attr_device_info = device_info
+        # Defensive: ensure required attributes for ButtonEntity are not None
+        if hasattr(entity_def, "confirmation") and getattr(entity_def, "confirmation", None) is None:
+            self._attr_confirmation = False
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     async def async_press(self) -> None:
