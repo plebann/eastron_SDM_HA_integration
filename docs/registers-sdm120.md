@@ -25,17 +25,29 @@ This document provides a categorized inventory of all SDM120 Modbus registers fo
 | 30265    | 01 08         | Max current demand       | 4      | Amps    | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
 | 30343    | 01 56         | Total active energy      | 4      | kWh     | Float     | 1.0           | RO     | sensor        | Basic      | None             |
 | 30345    | 01 58         | Total reactive energy    | 4      | kvarh   | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
+| 40013    | 00 0C         | Relay Pulse Width        | 4      | ms      | Float     | 1.0           | RW     | number        | Config     | Enum: 60, 100, 200 (default 100) |
+| 40019    | 00 12         | Network Parity Stop      | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=1 stop/no parity, 1=1 stop/even, 2=1 stop/odd, 3=2 stop/no parity |
+| 40021    | 00 14         | Meter ID                 | 4      | -       | Float     | 1.0           | RW     | number        | Config     | Range: 1-247, default 1 |
+| 40029    | 00 1C         | Baud rate                | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=2400, 1=4800, 2=9600, 5=1200 (default 0) |
+| 40087    | 00 56         | Pulse 1 output mode      | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 1=import, 2=import+export, 4=export, 5=import reactive, 6=import+export reactive, 8=export reactive (default 4) |
+| 463745   | F9 00         | Time of scroll display   | 2      | s       | HEX       | 1.0           | RW     | number        | Config     | Range: 0-30, default 0 |
+| 463761   | F9 10         | Pulse 1 output           | 2      | -       | HEX       | 1.0           | RW     | select        | Config     | Enum: 0=0.001kWh/imp (default), 1=0.01, 2=0.1, 3=1 |
+| 463777   | F9 20         | Measurement mode         | 2      | -       | HEX       | 1.0           | RW     | select        | Config     | Enum: 1=total=import, 2=import+export (default), 3=import-export |
+| 464513   | FC 00         | Serial number            | 4      | -       | UInt32    | 1.0           | RO     | sensor        | Diagnostic | Read only |
+| 464515   | FC 02         | Meter code               | 2      | -       | HEX       | 1.0           | RO     | sensor        | Diagnostic | Read only |
+| 464516   | FC 03         | Software version         | 2      | -       | HEX       | 1.0           | RO     | sensor        | Diagnostic | Read only |
 
 **Legend:**
 - **Basic**: Core energy monitoring, enabled by default
 - **Advanced**: Additional electrical parameters, disabled by default
 - **Diagnostic**: Device diagnostics and demand, disabled by default
+- **Config**: Device configuration registers (writable, may require restart or confirmation)
 
-**Data Type:** All registers are 32-bit IEEE 754 floating point values (Float).
+**Data Type:** Most registers are 32-bit IEEE 754 floating point values (Float). Some config/diagnostic registers are HEX or UInt32.
 **Scaling Factor:** All values are direct, no scaling required (factor = 1.0).
-**Access:** All 3xxxx registers are read-only (RO). 4xxxx holding registers (not shown here) may be read-write (RW).
-**HA Entity Type:** Most input registers map to `sensor`. Writable holding registers may map to `number`, `button`, or `select` as appropriate.
-**Special Handling:** None required for SDM120 input registers listed above. See device documentation for holding register bit fields or enums if implemented.
+**Access:** 3xxxx registers are read-only (RO). 4xxxx/46xxxx holding/config registers may be read-write (RW).
+**HA Entity Type:** Input registers map to `sensor`. Writable holding/config registers map to `number`, `select`, or `button` as appropriate.
+**Special Handling:** Enum/bitfield mapping required for some config registers (see "Special Handling" column).
 
 *This table can be expanded as more registers are mapped or as needed for the integration.*
 
