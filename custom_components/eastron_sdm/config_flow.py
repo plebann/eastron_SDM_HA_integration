@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from typing import Any
 import voluptuous as vol
+import json
+import re
+import asyncio
+import logging
+
+try:
+    from pymodbus.client import AsyncModbusTcpClient
+except ImportError:
+    AsyncModbusTcpClient = None
 
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN, CATEGORY_BASIC, CATEGORY_ADVANCED, CATEGORY_DIAGNOSTIC
 from .exceptions import SDMConnectionError
 from .device_models import async_detect_device_model
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +36,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Allows the user to paste a JSON config to pre-fill the setup flow.
         """
-        import json
         errors = {}
         data_schema = vol.Schema(
             {
@@ -68,7 +75,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input.get("host", "").strip()
             port = user_input.get("port", 502)
             unit_id = user_input.get("unit_id", 1)
-            import re
             if not host:
                 errors["host"] = "host_required"
             elif not re.match(r"^[a-zA-Z0-9\.\-]+$", host):
@@ -220,10 +226,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_validate_connection(self, host: str, port: int, unit_id: int):
         """Validate connection to the SDM device and return client, with retries."""
-        import asyncio
-        try:
-            from pymodbus.client import AsyncModbusTcpClient
-        except ImportError:
+        if AsyncModbusTcpClient is None:
             raise SDMConnectionError("pymodbus not installed")
 
         last_exc = None
@@ -314,7 +317,6 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_export(self, user_input: dict[str, Any] | None = None):
         """Export current configuration as JSON."""
-        import json
         config = dict(self.config_entry.data)
         config.update(self.config_entry.options)
         export_json = json.dumps(config, indent=2)
