@@ -56,8 +56,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.import.title",
-            description_translation_key="config.step.import.description"
         )
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
@@ -124,8 +122,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.user.title",
-            description_translation_key="config.step.user.description"
         )
 
     async def async_step_name(self, user_input: dict[str, Any] | None = None):
@@ -151,8 +147,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.name.title",
-            description_translation_key="config.step.name.description"
         )
 
     async def async_step_categories(self, user_input: dict[str, Any] | None = None):
@@ -186,8 +180,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.categories.title",
-            description_translation_key="config.step.categories.description"
         )
 
     async def async_step_polling(self, user_input: dict[str, Any] | None = None):
@@ -219,8 +211,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.polling.title",
-            description_translation_key="config.step.polling.description"
         )
 
     async def _async_validate_connection(self, host: str, port: int, unit_id: int):
@@ -310,8 +300,6 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="options.step.init.title",
-            description_translation_key="options.step.init.description"
         )
 
     async def async_step_export(self, user_input: dict[str, Any] | None = None):
@@ -323,6 +311,4 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="export",
             data_schema=vol.Schema({}),
             description_placeholders={"export_json": export_json},
-            title_translation_key="options.step.export.title",
-            description_translation_key="options.step.export.description"
         )

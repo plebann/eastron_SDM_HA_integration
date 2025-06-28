@@ -36,9 +36,13 @@ class SDMSensorEntity(CoordinatorEntity, SensorEntity):
         self._attr_state_class = getattr(register, "state_class", None)
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(register, "category", None) == "Basic")
+
     @property
     def native_value(self) -> float | None:
         return self.coordinator.data.get(self._register.name)
+
+# Alias for backward compatibility with tests
+EastronSDMSensor = SDMSensorEntity
 
 async def async_setup_entry(
     hass: HomeAssistant,
