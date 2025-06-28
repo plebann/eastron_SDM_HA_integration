@@ -87,7 +87,8 @@ class SDMDevice:
                 if hasattr(self.client, "connected") and not self.client.connected:
                     _LOGGER.warning("Modbus client disconnected, attempting reconnect to %s:%s", self.host, self.port)
                     await self.client.connect()
-                result = await self.client.read_holding_registers(address, count)
+                # pymodbus 3.x+ expects only address, count as keyword argument
+                result = await self.client.read_holding_registers(address=address, count=count)
             _LOGGER.debug(
                 "Diagnostic: Raw Modbus result for address 0x%04X from %s:%s: %s",
                 address, self.host, self.port, repr(result)
@@ -104,8 +105,12 @@ class SDMDevice:
             # Attempt reconnect on error
             try:
                 if self.client is not None:
-                    await self.client.close()
-                    await self.client.connect()
+                    close_fn = getattr(self.client, "close", None)
+                    connect_fn = getattr(self.client, "connect", None)
+                    if close_fn is not None:
+                        await close_fn()
+                    if connect_fn is not None:
+                        await connect_fn()
             except Exception as reconnect_exc:
                 _LOGGER.error("Failed to reconnect Modbus client: %s", reconnect_exc)
         return None
