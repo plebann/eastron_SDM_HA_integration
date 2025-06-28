@@ -40,6 +40,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set device_name attribute for device registry
     device.device_name = device_name
 
+    # Set register_map based on model
+    from .device_models import SDM120RegisterMap, SDM630RegisterMap
+    if model == "SDM120":
+        device.register_map = list(SDM120RegisterMap.REGISTERS)
+    elif model == "SDM630":
+        device.register_map = list(SDM630RegisterMap.REGISTERS)
+    else:
+        device.register_map = []
+
     # Initialize and connect pymodbus client
     try:
         from pymodbus.client import AsyncModbusTcpClient
