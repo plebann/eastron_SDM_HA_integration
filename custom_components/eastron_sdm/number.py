@@ -85,9 +85,9 @@ class SDMNumberEntity(NumberEntity):
         self._attr_native_min_value = entity_def.min_value
         self._attr_native_max_value = entity_def.max_value
         self._attr_native_step = entity_def.step
-        self._attr_native_unit_of_measurement = entity_def.unit
+        self._attr_native_unit_of_measurement = entity_def.units
         self._attr_device_class = entity_def.device_class
-        self._attr_entity_category = entity_def.entity_category
+        self._attr_entity_category = getattr(entity_def, "category", None)
         self._attr_device_info = coordinator.device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")

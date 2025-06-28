@@ -79,7 +79,7 @@ class SDMSelectEntity(SelectEntity):
         self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
         self._attr_options = entity_def.options
-        self._attr_entity_category = entity_def.entity_category
+        self._attr_entity_category = getattr(entity_def, "category", None)
         self._attr_device_info = coordinator.device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
