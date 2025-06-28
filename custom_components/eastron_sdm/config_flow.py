@@ -66,6 +66,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("host"): str,
                 vol.Required("port", default=4196): int,
                 vol.Required("unit_id", default=1): int,
+                vol.Required("model", default="SDM120"): vol.In(["SDM120", "SDM630"]),
             }
         )
         if user_input is not None:
@@ -97,9 +98,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     client = await self._async_validate_connection(
                         host, port, unit_id
                     )
-                    model = await async_detect_device_model(
-                        client, unit_id
-                    )
                     import asyncio
                     if (
                         client is not None
@@ -107,13 +105,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         and asyncio.iscoroutinefunction(client.close)
                     ):
                         await client.close()
-                    if not model:
-                        errors["base"] = "cannot_detect_model"
-                    else:
-                        # Store connection and model info, proceed to naming step
-                        self.context["connection"] = dict(user_input)
-                        self.context["connection"]["model"] = model
-                        return await self.async_step_name()
+                    # Store connection and model info, proceed to naming step
+                    self.context["connection"] = dict(user_input)
+                    return await self.async_step_name()
                 except SDMConnError as exc:
                     _LOGGER.error("Connection error: %s", exc)
                     errors["base"] = "cannot_connect"

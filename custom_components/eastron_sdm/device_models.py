@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Literal
 import logging
+import asyncio
 from homeassistant.components.sensor import SensorDeviceClass
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,6 +53,11 @@ class SDMDevice:
 
     # Placeholder for pymodbus client, to be set by coordinator or connection manager
     client: Any = field(default=None, repr=False, compare=False)
+    _lock: Any = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self):
+        if self._lock is None:
+            object.__setattr__(self, "_lock", asyncio.Lock())
 
     async def async_read_registers(self, address: int, count: int = 1) -> Optional[list[float]]:
         """Read Modbus registers from the device asynchronously.
@@ -68,8 +74,9 @@ class SDMDevice:
             return None
 
         try:
-            # This assumes pymodbus async client with read_holding_registers method
-            result = await self.client.read_holding_registers(address, count)
+            async with self._lock:
+                # This assumes pymodbus async client with read_holding_registers method
+                result = await self.client.read_holding_registers(address, count)
             if not result.isError():
                 _LOGGER.debug("Read %d registers at 0x%04X from %s: %s", count, address, self.host, result.registers)
                 return result.registers
