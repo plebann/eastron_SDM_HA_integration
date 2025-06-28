@@ -222,14 +222,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate connection to the SDM device and return client, with retries."""
         import asyncio
         try:
-            from pymodbus.client.async_tcp import AsyncModbusTCPClient
+            from pymodbus.client import AsyncModbusTcpClient
         except ImportError:
             raise SDMConnectionError("pymodbus not installed")
 
         last_exc = None
         for attempt in range(3):
             try:
-                client = AsyncModbusTCPClient(host=host, port=port)
+                client = AsyncModbusTcpClient(host=host, port=port)
                 await client.connect()
                 result = await client.read_holding_registers(0x0000, 2, unit=unit_id)
                 if not hasattr(result, "registers") or result.isError():

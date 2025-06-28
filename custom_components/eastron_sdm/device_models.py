@@ -121,32 +121,32 @@ class SDM120RegisterMap:
         SDMRegister(0x000C, False, "relay_pulse_width", "Relay Pulse Width", 4, "ms", "Float", 1.0, "RW", "number", "Config", None, "Enum: 60, 100, 200 (default 100)"),
         SDMRegister(0x0012, False, "network_parity_stop", "Network Parity Stop", 4, None, "Float", 1.0, "RW", "select", "Config", None, "Enum: 0=1 stop/no parity, 1=1 stop/even, 2=1 stop/odd, 3=2 stop/no parity"),
         SDMRegister(
-            0x0014, False, "meter_id", "Meter ID", 4, None, "Float", 1.0, "RW", "number", "Config",
+            0x0014, False, "meter_id", "Meter ID", 4, None, "Float", 1.0, "RW", "number", "Config", None,
             special="Range: 1-247, default 1",
             min_value=1, max_value=247, step=1
         ),
         SDMRegister(
-            0x001C, False, "baud_rate", "Baud rate", 4, None, "Float", 1.0, "RW", "select", "Config",
+            0x001C, False, "baud_rate", "Baud rate", 4, None, "Float", 1.0, "RW", "select", "Config", None,
             special="Enum: 0=2400, 1=4800, 2=9600, 5=1200 (default 0)",
             options=[0, 1, 2, 5]
         ),
         SDMRegister(
-            0x0056, False, "pulse_1_output_mode", "Pulse 1 output mode", 4, None, "Float", 1.0, "RW", "select", "Config",
+            0x0056, False, "pulse_1_output_mode", "Pulse 1 output mode", 4, None, "Float", 1.0, "RW", "select", "Config", None,
             special="Enum: 1=import, 2=import+export, 4=export, 5=import reactive, 6=import+export reactive, 8=export reactive (default 4)",
             options=[1, 2, 4, 5, 6, 8]
         ),
         SDMRegister(
-            0xF900, False, "time_of_scroll_display", "Time of scroll display", 2, "s", "HEX", 1.0, "RW", "number", "Config",
+            0xF900, False, "time_of_scroll_display", "Time of scroll display", 2, "s", "HEX", 1.0, "RW", "number", "Config", None,
             special="Range: 0-30, default 0",
             min_value=0, max_value=30, step=1
         ),
         SDMRegister(
-            0xF910, False, "pulse_1_output", "Pulse 1 output", 2, None, "HEX", 1.0, "RW", "select", "Config",
+            0xF910, False, "pulse_1_output", "Pulse 1 output", 2, None, "HEX", 1.0, "RW", "select", "Config", None,
             special="Enum: 0=0.001kWh/imp (default), 1=0.01, 2=0.1, 3=1",
             options=[0, 1, 2, 3]
         ),
         SDMRegister(
-            0xF920, False, "measurement_mode", "Measurement mode", 2, None, "HEX", 1.0, "RW", "select", "Config",
+            0xF920, False, "measurement_mode", "Measurement mode", 2, None, "HEX", 1.0, "RW", "select", "Config", None,
             special="Enum: 1=total=import, 2=import+export (default), 3=import-export",
             options=[1, 2, 3]
         ),
