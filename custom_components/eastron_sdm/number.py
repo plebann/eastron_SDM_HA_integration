@@ -77,7 +77,10 @@ class SDMNumberEntity(NumberEntity):
         if key is None:
             key = getattr(entity_def, "address", "unknown")
         self._attr_unique_id = f"{device_name}_{key}"
-        self._attr_translation_key = entity_def.key
+        translation_key = getattr(entity_def, "parameter_key", None)
+        if translation_key is None:
+            translation_key = str(getattr(entity_def, "address", "unknown"))
+        self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
         self._attr_native_min_value = entity_def.min_value
         self._attr_native_max_value = entity_def.max_value

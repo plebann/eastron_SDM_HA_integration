@@ -73,7 +73,10 @@ class SDMSelectEntity(SelectEntity):
         if key is None:
             key = getattr(entity_def, "address", "unknown")
         self._attr_unique_id = f"{device_name}_{key}"
-        self._attr_translation_key = entity_def.key
+        translation_key = getattr(entity_def, "parameter_key", None)
+        if translation_key is None:
+            translation_key = str(getattr(entity_def, "address", "unknown"))
+        self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
         self._attr_options = entity_def.options
         self._attr_entity_category = entity_def.entity_category
