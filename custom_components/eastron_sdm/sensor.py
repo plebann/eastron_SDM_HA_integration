@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 
-from .coordinator import SDMDataUpdateCoordinator
+from .coordinator import SDMMultiTierCoordinator
 from .device_models import SDM120RegisterMap, SDMRegister, SDM630RegisterMap
 import logging
 
@@ -22,7 +22,7 @@ class SDMSensorEntity(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: SDMDataUpdateCoordinator,
+        coordinator,
         register: SDMRegister,
         device_name: str,
     ):
@@ -48,7 +48,7 @@ async def async_setup_entry(
     """Set up Eastron SDM sensors from a config entry."""
     device_name = entry.data.get("device_name", "eastron_sdm")
     model = entry.data.get("model", "SDM120")
-    coordinator: SDMDataUpdateCoordinator = hass.data["eastron_sdm"][entry.entry_id]["coordinator"]
+    multi_tier_coordinator: SDMMultiTierCoordinator = hass.data["eastron_sdm"][entry.entry_id]["coordinator"]
     entities = []
 
     if model == "SDM630":
@@ -56,8 +56,21 @@ async def async_setup_entry(
     else:
         reg_map = SDM120RegisterMap.REGISTERS
 
+    # Map register category to polling tier
+    def get_tier_for_category(category: str) -> str:
+        if category == "Basic":
+            return "fast"
+        elif category == "Advanced":
+            return "normal"
+        elif category == "Diagnostic":
+            return "slow"
+        else:
+            return "normal"
+
     for reg in reg_map:
         if reg.ha_entity_type == "sensor" and reg.use_registry:
-            entities.append(SDMSensorEntity(coordinator, reg, device_name))
+            tier = get_tier_for_category(getattr(reg, "category", "normal"))
+            tier_coordinator = multi_tier_coordinator.coordinators[tier]
+            entities.append(SDMSensorEntity(tier_coordinator, reg, device_name))
 
     async_add_entities(entities)
