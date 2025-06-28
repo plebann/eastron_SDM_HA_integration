@@ -118,18 +118,40 @@ class SDMDataUpdateCoordinator(DataUpdateCoordinator):
         return batches
 
     def _parse_and_validate_registers(self, raw_values, reg_defs):
-        """Parse and validate raw register values."""
+        """Parse and validate raw register values with datatype and size support."""
+        import struct
         parsed = {}
-        if raw_values is None or len(raw_values) < len(reg_defs):
+        if raw_values is None:
             for reg in reg_defs:
                 parsed[reg.name] = None
             return parsed
-        for idx, reg in enumerate(reg_defs):
+        idx = 0
+        for reg in reg_defs:
             try:
-                value = reg.apply_scaling(raw_values[idx])
+                reg_words = reg.length // 2
+                if idx + reg_words > len(raw_values):
+                    parsed[reg.name] = None
+                    idx += reg_words
+                    continue
+                regs = raw_values[idx:idx + reg_words]
+                if reg.data_type == "Float" and reg_words == 2:
+                    # Combine two 16-bit registers into 32-bit float (big endian)
+                    val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
+                elif reg.data_type == "UInt32" and reg_words == 2:
+                    val = (regs[0] << 16) | regs[1]
+                elif reg.data_type == "HEX":
+                    if reg_words == 2:
+                        val = (regs[0] << 16) | regs[1]
+                    else:
+                        val = regs[0]
+                else:
+                    val = regs[0]
+                value = reg.apply_scaling(val)
                 parsed[reg.name] = value
+                idx += reg_words
             except Exception:
                 parsed[reg.name] = None
+                idx += reg.length // 2
         return parsed
 
 class SDMMultiTierCoordinator:
@@ -288,17 +310,37 @@ class SDMTierDeviceProxy:
         return batches
 
     def _parse_and_validate_registers(self, raw_values, reg_defs):
-        """Parse and validate raw register values."""
+        """Parse and validate raw register values with datatype and size support."""
+        import struct
         parsed = {}
-        if raw_values is None or len(raw_values) < len(reg_defs):
+        if raw_values is None:
             for reg in reg_defs:
                 parsed[reg.name] = None
             return parsed
-        for idx, reg in enumerate(reg_defs):
+        idx = 0
+        for reg in reg_defs:
             try:
-                value = reg.apply_scaling(raw_values[idx])
-                # Add further validation if needed (e.g., range checks)
+                reg_words = reg.length // 2
+                if idx + reg_words > len(raw_values):
+                    parsed[reg.name] = None
+                    idx += reg_words
+                    continue
+                regs = raw_values[idx:idx + reg_words]
+                if reg.data_type == "Float" and reg_words == 2:
+                    val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
+                elif reg.data_type == "UInt32" and reg_words == 2:
+                    val = (regs[0] << 16) | regs[1]
+                elif reg.data_type == "HEX":
+                    if reg_words == 2:
+                        val = (regs[0] << 16) | regs[1]
+                    else:
+                        val = regs[0]
+                else:
+                    val = regs[0]
+                value = reg.apply_scaling(val)
                 parsed[reg.name] = value
+                idx += reg_words
             except Exception:
                 parsed[reg.name] = None
+                idx += reg.length // 2
         return parsed
