@@ -25,116 +25,116 @@ Custom Home Assistant integration for Eastron SDM120/SDM630 energy meters via Mo
 - [x] Create `docs/registers-sdm120.md` and `docs/registers-sdm630.md` reference files
 
 ### Device Model Framework
-- [ ] Implement base `SDMDevice` class with common functionality
-- [ ] Create `SDM120RegisterMap` class with register definitions
-- [ ] Create `SDM630RegisterMap` class with register definitions
-- [ ] Implement register scaling and unit conversion logic
-- [ ] Add device detection mechanism via register reads
+- [x] Implement base `SDMDevice` class with common functionality
+- [x] Create `SDM120RegisterMap` class with register definitions
+- [x] Create `SDM630RegisterMap` class with register definitions
+- [x] Implement register scaling and unit conversion logic
+- [x] Add device detection mechanism via register reads
 
 ### Configuration Flow (Basic)
-- [ ] Implement `ConfigFlow` class structure
-- [ ] Create connection validation step (IP, port, unit_id)
-- [ ] Add device detection and model identification
-- [ ] Implement device naming input with validation
-- [ ] Add basic error handling and user feedback
+- [x] Implement `ConfigFlow` class structure
+- [x] Create connection validation step (IP, port, unit_id)
+- [x] Add device detection and model identification
+- [x] Implement device naming input with validation
+- [x] Add basic error handling and user feedback
 
 ### Data Coordinator
-- [ ] Implement `SDMDataUpdateCoordinator` base class
-- [ ] Create Modbus TCP connection management
-- [ ] Implement batch register reading for efficiency
-- [ ] Add connection error handling and retry logic
-- [ ] Create data parsing and validation methods
+- [x] Implement `SDMDataUpdateCoordinator` base class
+- [x] Create Modbus TCP connection management
+- [x] Implement batch register reading for efficiency
+- [x] Add connection error handling and retry logic
+- [x] Create data parsing and validation methods
 
 ## Phase 2: Basic Sensors & Single Device
 
 ### Sensor Platform Implementation
-- [ ] Create `sensor.py` with platform setup
-- [ ] Implement basic voltage sensors (L1, L2, L3)
-- [ ] Implement basic current sensors (L1, L2, L3)
-- [ ] Implement basic power sensor (L1, L2, L3)
-- [ ] Implement basic total power sensor
-- [ ] Add frequency sensor
-- [ ] Add total energy import/export sensors
+- [x] Create `sensor.py` with platform setup
+- [x] Read informations from RegistryMap 'device-models.py' for given type
+
+### Numbers Platform Implementation
+- [x] Create `number.py` with platform setup
+- [x] Read informations from RegistryMap 'device-models.py' for given type
+
+### Selects Platform Implementation
+- [x] Create `select.py` with platform setup
+- [x] Read informations from RegistryMap 'device-models.py' for given type
+
+### Buttons Platform Implementation
+- [x] Create `button.py` with platform setup
+- [x] Read informations from RegistryMap 'device-models.py' for given type
 
 ### Entity Configuration
-- [ ] Set proper device classes for each sensor type
-- [ ] Configure state classes for energy dashboard integration
-- [ ] Implement proper unit of measurement assignment
-- [ ] Add entity naming with user-defined device prefix
-- [ ] Set default enabled/disabled states per category
+- [x] Set proper device classes for each sensor, number, select and button type
+- [x] Configure state classes for energy dashboard integration
+- [x] Implement proper unit of measurement assignment
+- [x] Add entity naming with user-defined device prefix
+- [x] Set default enabled/disabled states per category
 
 ### Device Registry Integration
-- [ ] Implement device info creation
-- [ ] Add model identification (SDM120/SDM630)
-- [ ] Create unique device identifiers
-- [ ] Add manufacturer and firmware information display
+- [x] Implement device info creation
+- [x] Add model identification (SDM120/SDM630)
+- [x] Create unique device identifiers
+- [x] Add manufacturer and firmware information display
 
 ## Phase 3: Advanced Features & Multi-Device
 
-### Advanced Sensors
-- [ ] Implement power sensors (active, reactive, apparent)
-- [ ] Add power factor sensors
-- [ ] Implement THD sensors (voltage and current)
-- [ ] Add phase angle measurements
-- [ ] Create demand measurement sensors
-
 ### Multi-Device Support
-- [ ] Extend config flow for multiple device entries
-- [ ] Implement device-specific coordinators
-- [ ] Add device conflict detection (same IP/unit_id)
-- [ ] Create device management UI options
-- [ ] Test multiple device scenarios
+- [x] Extend config flow for multiple device entries
+- [x] Implement device-specific coordinators
+- [x] Add device conflict detection (same IP/unit_id)
+- [x] Create device management UI options
+- [x] Test multiple device scenarios
 
 ### Polling Optimization
-- [ ] Implement multi-tier polling system (fast/normal/slow)
-- [ ] Create configurable polling intervals in config flow
-- [ ] Add polling group assignment for different entity types
-- [ ] Implement efficient coordinator scheduling
-- [ ] Add polling statistics and diagnostics
+- [x] Implement multi-tier polling system (fast/normal/slow)
+- [x] Create configurable polling intervals in config flow
+- [x] Add polling group assignment for different entity types
+- [x] Implement efficient coordinator scheduling
+- [x] Add polling statistics and diagnostics
 
 ## Phase 4: Diagnostic Features & Control
 
 ### Number Entities
-- [ ] Create `number.py` platform
-- [ ] Implement baud rate configuration entity
-- [ ] Add parity setting configuration
-- [ ] Implement stop bits configuration
-- [ ] Add input validation and range checking
+- [x] Create `number.py` platform
+- [x] Implement baud rate configuration entity
+- [x] Add parity setting configuration
+- [x] Implement stop bits configuration
+- [x] Add input validation and range checking
 
 ### Button Entities
-- [ ] Create `button.py` platform
-- [ ] Implement energy counter reset button
-- [ ] Add demand values reset button
-- [ ] Create confirmation dialog system
-- [ ] Set diagnostic entities as disabled by default
+- [x] Create `button.py` platform
+- [x] Implement energy counter reset button
+- [x] Add demand values reset button
+- [x] Create confirmation dialog system
+- [x] Set diagnostic entities as disabled by default
 
 ### Select Entities (if needed)
-- [ ] Create `select.py` platform for enumerated settings
-- [ ] Implement communication parameter selections
-- [ ] Add proper option validation
+- [x] Create `select.py` platform for enumerated settings
+- [x] Implement communication parameter selections
+- [x] Add proper option validation
 
 ## Phase 5: User Experience & Polish
 
 ### Configuration Flow Enhancement
-- [ ] Add entity category selection checkboxes
-- [ ] Implement polling interval customization
-- [ ] Add configuration validation and testing
-- [ ] Create setup progress indicators
-- [ ] Implement configuration import/export
+- [x] Add entity category selection checkboxes
+- [x] Implement polling interval customization
+- [x] Add configuration validation and testing
+- [x] Create setup progress indicators
+- [x] Implement configuration import/export
 
 ### Error Handling & Diagnostics
-- [ ] Implement comprehensive error logging
-- [ ] Add user-friendly error messages
-- [ ] Create connection status indicators
-- [ ] Add diagnostic information display
-- [ ] Implement automatic recovery mechanisms
+- [x] Implement comprehensive error logging
+- [x] Add user-friendly error messages
+- [x] Create connection status indicators
+- [x] Add diagnostic information display
+- [x] Implement automatic recovery mechanisms
 
 ### Translations & Documentation
-- [ ] Create `translations/en.json` with all UI strings
-- [ ] Add comprehensive inline code documentation
-- [ ] Create user documentation and examples
-- [ ] Add troubleshooting guide
-- [ ] Create configuration examples
+- [x] Create `translations/en.json` with all UI strings
+- [x] Add comprehensive inline code documentation
+- [x] Create user documentation and examples
+- [x] Add troubleshooting guide
+- [x] Create configuration examples
 
 ## Phase 6: Testing & HACS Preparation
 

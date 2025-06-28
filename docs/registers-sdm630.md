@@ -49,17 +49,30 @@ This document provides a categorized inventory of all SDM630 Modbus registers fo
 | 30245    | 00 F4         | Phase 3 Current THD             | 4      | %       | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
 | 30343    | 01 56         | Total kWh                       | 4      | kWh     | Float     | 1.0           | RO     | sensor        | Basic      | None             |
 | 30345    | 01 58         | Total kVArh                     | 4      | kVArh   | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
+| 40003    | 00 02         | Demand Period                   | 4      | min     | Float     | 1.0           | RW     | select        | Config     | Enum: 0, 5, 8, 10, 15, 20, 30, 60 (default 60) |
+| 40011    | 00 0A         | System Type                     | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 3p4w=3, 3p3w=2, 1p2w=1 (password protected) |
+| 40013    | 00 0C         | Pulse1 Width                    | 4      | ms      | Float     | 1.0           | RW     | number        | Config     | Enum: 60, 100, 200 (default 100) |
+| 40015    | 00 0E         | Password Lock                   | 4      | -       | Float     | 1.0           | RW     | button        | Config     | Write any value to lock, read resets timeout |
+| 40019    | 00 12         | Network Parity Stop             | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=1 stop/no parity, 1=1 stop/even, 2=1 stop/odd, 3=2 stop/no parity |
+| 40021    | 00 14         | Network Node                    | 4      | -       | Float     | 1.0           | RW     | number        | Config     | Range: 1-247, default 1 |
+| 40023    | 00 16         | Pulse1 Divisor1                 | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=0.0025, 1=0.01, 2=0.1, 3=1, 4=10, 5=100 kWh/imp |
+| 40025    | 00 18         | Password                        | 4      | -       | Float     | 1.0           | RW     | number        | Config     | Enter password for protected registers |
+| 40029    | 00 1C         | Network Baud Rate               | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=2400, 1=4800, 2=9600 (default), 3=19200, 4=38400 |
+| 40087    | 00 56         | Pulse 1 Energy Type             | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 1=import, 2=total, 4=export (default), 5=import reactive, 6=total reactive, 8=export reactive |
+| 461457   | F0 10         | Reset                           | 2      | -       | HEX       | 1.0           | WO     | button        | Config     | Write 0x0000 to reset max demand |
+| 464513   | FC 00         | Serial number                   | 4      | -       | UInt32    | 1.0           | RO     | sensor        | Diagnostic | Read only |
 
 **Legend:**
 - **Basic**: Core energy monitoring, enabled by default
 - **Advanced**: Additional electrical parameters, disabled by default
 - **Diagnostic**: Device diagnostics and demand, disabled by default
+- **Config**: Device configuration registers (writable, may require restart or confirmation)
 
-**Data Type:** All registers are 32-bit IEEE 754 floating point values (Float).
+**Data Type:** Most registers are 32-bit IEEE 754 floating point values (Float). Some config/diagnostic registers are HEX or UInt32.
 **Scaling Factor:** All values are direct, no scaling required (factor = 1.0).
-**Access:** All 3xxxx registers are read-only (RO). 4xxxx holding registers (not shown here) may be read-write (RW).
-**HA Entity Type:** Most input registers map to `sensor`. Writable holding registers may map to `number`, `button`, or `select` as appropriate.
-**Special Handling:** None required for SDM630 input registers listed above. See device documentation for holding register bit fields or enums if implemented.
+**Access:** 3xxxx registers are read-only (RO). 4xxxx/46xxxx holding/config registers may be read-write (RW) or write-only (WO).
+**HA Entity Type:** Input registers map to `sensor`. Writable holding/config registers map to `number`, `select`, or `button` as appropriate.
+**Special Handling:** Enum/bitfield mapping required for some config registers (see "Special Handling" column).
 
 *This table can be expanded as more registers are mapped or as needed for the integration.*
 
