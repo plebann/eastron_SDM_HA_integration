@@ -139,7 +139,8 @@ class SDMDataUpdateCoordinator(DataUpdateCoordinator):
                     reg.name, reg.address, regs, reg_words
                 )
                 if reg.data_type == "Float" and reg_words == 2:
-                    val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
+                    # SDM meters require swapped word order for float32
+                    val = struct.unpack(">f", struct.pack(">HH", regs[1], regs[0]))[0]
                     _LOGGER.debug(
                         "Register debug: name=%s, decoded float value=%s", reg.name, val
                     )
@@ -288,7 +289,6 @@ class SDMTierDeviceProxy:
 
     def _group_registers_for_batch(self, register_defs):
         """Group register definitions into contiguous address batches."""
-        # register_defs: tuple/list of SDM120Register
         sorted_regs = sorted(register_defs, key=lambda r: r.address)
         batches = []
         batch = []
@@ -298,7 +298,6 @@ class SDMTierDeviceProxy:
                 batch = [reg]
                 last_addr = reg.address
                 continue
-            # Assume each register is 2 words (4 bytes)
             expected_next = last_addr + reg.length // 2
             if reg.address == expected_next:
                 batch.append(reg)
