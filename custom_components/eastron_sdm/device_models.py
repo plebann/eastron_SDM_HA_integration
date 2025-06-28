@@ -74,18 +74,29 @@ class SDMDevice:
             return None
 
         try:
+            _LOGGER.debug(
+                "Diagnostic: Attempting to read %d registers at 0x%04X from %s:%s",
+                count, address, self.host, self.port
+            )
             async with self._lock:
                 # Attempt reconnect if client is disconnected
                 if hasattr(self.client, "connected") and not self.client.connected:
                     _LOGGER.warning("Modbus client disconnected, attempting reconnect to %s:%s", self.host, self.port)
                     await self.client.connect()
                 result = await self.client.read_holding_registers(address, count)
+            _LOGGER.debug(
+                "Diagnostic: Raw Modbus result for address 0x%04X from %s:%s: %s",
+                address, self.host, self.port, repr(result)
+            )
             if not result.isError():
-                _LOGGER.debug("Read %d registers at 0x%04X from %s: %s", count, address, self.host, result.registers)
+                _LOGGER.debug(
+                    "Diagnostic: Read %d registers at 0x%04X from %s:%s, values: %s",
+                    count, address, self.host, self.port, result.registers
+                )
                 return result.registers
-            _LOGGER.error("Modbus error reading registers at 0x%04X from %s", address, self.host)
+            _LOGGER.error("Modbus error reading registers at 0x%04X from %s:%s", address, self.host, self.port)
         except Exception as exc:
-            _LOGGER.error("Exception reading registers at 0x%04X from %s: %s", address, self.host, exc)
+            _LOGGER.error("Exception reading registers at 0x%04X from %s:%s: %s", address, self.host, self.port, exc)
             # Attempt reconnect on error
             try:
                 if self.client is not None:
@@ -116,15 +127,15 @@ class SDM120RegisterMap:
     """Static register map for SDM120 meter."""
 
     REGISTERS: tuple[SDMRegister, ...] = (
-        SDMRegister(0x0000, True, "voltage_l1", "Voltage", 4, "Volts", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.VOLTAGE),
+        SDMRegister(0x0000, True, "voltage", "Voltage", 4, "Volts", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.VOLTAGE),
         SDMRegister(0x0006, True, "current", "Current", 4, "Amps", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.CURRENT),
-        SDMRegister(0x000C, True, "active_power", "Active power", 4, "Watts", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.POWER),
+        SDMRegister(0x000C, True, "power", "Power", 4, "Watts", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.POWER),
         SDMRegister(0x0012, True, "apparent_power", "Apparent power", 4, "VA", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.APPARENT_POWER),
         SDMRegister(0x0018, True, "reactive_power", "Reactive power", 4, "VAr", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.REACTIVE_POWER),
         SDMRegister(0x001E, True, "power_factor", "Power factor", 4, None, "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.POWER_FACTOR),
         SDMRegister(0x0046, True, "frequency", "Frequency", 4, "Hz", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.FREQUENCY),
-        SDMRegister(0x0048, True, "import_active_energy", "Import active energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
-        SDMRegister(0x004A, True, "export_active_energy", "Export active energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
+        SDMRegister(0x0048, True, "import_energy", "Import energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
+        SDMRegister(0x004A, True, "export_energy", "Export energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
         SDMRegister(0x004C, False, "import_reactive_energy", "Import reactive energy", 4, "kvarh", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.ENERGY),
         SDMRegister(0x004E, False, "export_reactive_energy", "Export reactive energy", 4, "kvarh", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.ENERGY),
         SDMRegister(0x0054, False, "total_system_power_demand", "Total system power demand", 4, "W", "Float", 1.0, "RO", "sensor", "Diagnostic", SensorDeviceClass.POWER),
@@ -135,7 +146,7 @@ class SDM120RegisterMap:
         SDMRegister(0x005E, False, "max_export_system_power_demand", "Max export system power demand", 4, "W", "Float", 1.0, "RO", "sensor", "Diagnostic", SensorDeviceClass.POWER),
         SDMRegister(0x0102, False, "current_demand", "Current demand", 4, "Amps", "Float", 1.0, "RO", "sensor", "Diagnostic", SensorDeviceClass.CURRENT),
         SDMRegister(0x0108, False, "max_current_demand", "Max current demand", 4, "Amps", "Float", 1.0, "RO", "sensor", "Diagnostic", SensorDeviceClass.CURRENT),
-        SDMRegister(0x0156, False, "total_active_energy", "Total active energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
+        SDMRegister(0x0156, False, "total_energy", "Total energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY),
         SDMRegister(0x0158, False, "total_reactive_energy", "Total reactive energy", 4, "kvarh", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.ENERGY),
         SDMRegister(0x000C, False, "relay_pulse_width", "Relay Pulse Width", 4, "ms", "Float", 1.0, "RW", "number", "Config", None, "Enum: 60, 100, 200 (default 100)"),
         SDMRegister(0x0012, False, "network_parity_stop", "Network Parity Stop", 4, None, "Float", 1.0, "RW", "select", "Config", None, "Enum: 0=1 stop/no parity, 1=1 stop/even, 2=1 stop/odd, 3=2 stop/no parity"),
