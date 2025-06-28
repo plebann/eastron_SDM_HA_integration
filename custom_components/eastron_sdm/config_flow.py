@@ -249,9 +249,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Eastron SDM."""
 
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options (device management UI)."""
         errors = {}
@@ -296,16 +293,11 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
         # Diagnostic info
         model = self.config_entry.data.get("model", "Unknown")
         firmware = self.config_entry.data.get("firmware", "Unknown")
-        diag_desc = (
-            f"Device model: {model}\n"
-            f"Firmware: {firmware}\n\n"
-            "Edit configuration or export current config as JSON."
-        )
         return self.async_show_form(
             step_id="init",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders={},
+            description_placeholders={"model": model, "firmware": firmware},
         )
 
     async def async_step_export(self, user_input: dict[str, Any] | None = None):
