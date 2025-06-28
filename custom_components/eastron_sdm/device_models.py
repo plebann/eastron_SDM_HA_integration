@@ -284,3 +284,12 @@ def get_button_entities_for_model(model: str):
         reg for reg in registers if getattr(reg, "ha_entity_type", None) == "button"
     ]
     return button_entities
+
+def create_device_instance(model: str, host: str, port: int, unit_id: int, timeout: int = 10, **kwargs):
+    """Factory for SDMDevice instances based on model."""
+    if model == "SDM120":
+        return SDMDevice(host=host, port=port, unit_id=unit_id, model="SDM120", timeout=timeout)
+    elif model == "SDM630":
+        return SDMDevice(host=host, port=port, unit_id=unit_id, model="SDM630", timeout=timeout)
+    else:
+        raise ValueError(f"Unknown SDM model: {model}")
