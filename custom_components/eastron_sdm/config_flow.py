@@ -4,17 +4,25 @@ from __future__ import annotations
 
 from typing import Any
 import voluptuous as vol
+import json
+import re
+import asyncio
+import logging
+
+try:
+    from pymodbus.client import AsyncModbusTcpClient
+except ImportError:
+    AsyncModbusTcpClient = None
 
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN, CATEGORY_BASIC, CATEGORY_ADVANCED, CATEGORY_DIAGNOSTIC
-from .exceptions import SDMConnectionError
+from .exceptions import SDMConnError
 from .device_models import async_detect_device_model
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow handler for Eastron SDM integration.
 
     Guides the user through connection setup, device naming, entity category selection,
@@ -28,7 +36,6 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Allows the user to paste a JSON config to pre-fill the setup flow.
         """
-        import json
         errors = {}
         data_schema = vol.Schema(
             {
@@ -49,8 +56,6 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.import.title",
-            description_translation_key="config.step.import.description"
         )
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
@@ -59,16 +64,16 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data_schema = vol.Schema(
             {
                 vol.Required("host"): str,
-                vol.Required("port", default=502): int,
+                vol.Required("port", default=4196): int,
                 vol.Required("unit_id", default=1): int,
+                vol.Required("model", default="SDM120"): vol.In(["SDM120", "SDM630"]),
             }
         )
         if user_input is not None:
             # Validate host
             host = user_input.get("host", "").strip()
-            port = user_input.get("port", 502)
+            port = user_input.get("port", 4196)
             unit_id = user_input.get("unit_id", 1)
-            import re
             if not host:
                 errors["host"] = "host_required"
             elif not re.match(r"^[a-zA-Z0-9\.\-]+$", host):
@@ -93,18 +98,17 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     client = await self._async_validate_connection(
                         host, port, unit_id
                     )
-                    model = await async_detect_device_model(
-                        client, unit_id
-                    )
-                    await client.close()
-                    if not model:
-                        errors["base"] = "cannot_detect_model"
-                    else:
-                        # Store connection and model info, proceed to naming step
-                        self.context["connection"] = dict(user_input)
-                        self.context["connection"]["model"] = model
-                        return await self.async_step_name()
-                except SDMConnectionError as exc:
+                    import asyncio
+                    if (
+                        client is not None
+                        and hasattr(client, "close")
+                        and asyncio.iscoroutinefunction(client.close)
+                    ):
+                        await client.close()
+                    # Store connection and model info, proceed to naming step
+                    self.context["connection"] = dict(user_input)
+                    return await self.async_step_name()
+                except SDMConnError as exc:
                     _LOGGER.error("Connection error: %s", exc)
                     errors["base"] = "cannot_connect"
                 except Exception as exc:
@@ -118,9 +122,6 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            description=description,
-            title_translation_key="config.step.user.title",
-            description_translation_key="config.step.user.description"
         )
 
     async def async_step_name(self, user_input: dict[str, Any] | None = None):
@@ -146,8 +147,6 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.name.title",
-            description_translation_key="config.step.name.description"
         )
 
     async def async_step_categories(self, user_input: dict[str, Any] | None = None):
@@ -181,8 +180,6 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.categories.title",
-            description_translation_key="config.step.categories.description"
         )
 
     async def async_step_polling(self, user_input: dict[str, Any] | None = None):
@@ -214,45 +211,37 @@ class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={},
-            title_translation_key="config.step.polling.title",
-            description_translation_key="config.step.polling.description"
         )
 
     async def _async_validate_connection(self, host: str, port: int, unit_id: int):
         """Validate connection to the SDM device and return client, with retries."""
-        import asyncio
-        try:
-            from pymodbus.client.async_tcp import AsyncModbusTCPClient
-        except ImportError:
-            raise SDMConnectionError("pymodbus not installed")
+        if AsyncModbusTcpClient is None:
+            raise SDMConnError("pymodbus not installed")
 
         last_exc = None
         for attempt in range(3):
             try:
-                client = AsyncModbusTCPClient(host=host, port=port)
+                client = AsyncModbusTcpClient(host=host, port=port)
                 await client.connect()
-                result = await client.read_holding_registers(0x0000, 2, unit=unit_id)
+                result = await client.read_holding_registers(0x0000)
                 if not hasattr(result, "registers") or result.isError():
                     await client.close()
-                    raise SDMConnectionError("No response or error from device")
+                    raise SDMConnError("No response or error from device")
                 return client
             except Exception as exc:
                 last_exc = exc
                 _LOGGER.warning("Connection attempt %d failed: %s", attempt + 1, exc)
                 await asyncio.sleep(1)
-        raise SDMConnectionError(f"Connection failed after retries: {last_exc}") from last_exc
+        raise SDMConnError(f"Connection failed after retries: {last_exc}") from last_exc
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
-        return EastronSDMOptionsFlowHandler(config_entry)
+        return EastronSDMOptionsFlowHandler()
 
 class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Eastron SDM."""
-
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options (device management UI)."""
@@ -298,23 +287,15 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
         # Diagnostic info
         model = self.config_entry.data.get("model", "Unknown")
         firmware = self.config_entry.data.get("firmware", "Unknown")
-        diag_desc = (
-            f"Device model: {model}\n"
-            f"Firmware: {firmware}\n\n"
-            "Edit configuration or export current config as JSON."
-        )
         return self.async_show_form(
             step_id="init",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders={},
-            title_translation_key="options.step.init.title",
-            description_translation_key="options.step.init.description"
+            description_placeholders={"model": model, "firmware": firmware},
         )
 
     async def async_step_export(self, user_input: dict[str, Any] | None = None):
         """Export current configuration as JSON."""
-        import json
         config = dict(self.config_entry.data)
         config.update(self.config_entry.options)
         export_json = json.dumps(config, indent=2)
@@ -322,6 +303,4 @@ class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="export",
             data_schema=vol.Schema({}),
             description_placeholders={"export_json": export_json},
-            title_translation_key="options.step.export.title",
-            description_translation_key="options.step.export.description"
         )

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from homeassistant.core import HomeAssistant
 
-from custom_components.eastron_sdm.coordinator import EastronSDMDataUpdateCoordinator
+from custom_components.eastron_sdm.coordinator import SDMDataUpdateCoordinator
 
 @pytest.mark.asyncio
 async def test_successful_data_update_cycle(hass: HomeAssistant):
@@ -18,10 +18,10 @@ async def test_successful_data_update_cycle(hass: HomeAssistant):
         "custom_components.eastron_sdm.coordinator.create_modbus_client",
         return_value=mock_client,
     ):
-        coordinator = EastronSDMDataUpdateCoordinator(
+        coordinator = SDMDataUpdateCoordinator(
             hass,
             host="192.168.1.100",
-            port=502,
+            port=4196,
             unit_id=1,
             model="sdm120",
             polling_interval=10,

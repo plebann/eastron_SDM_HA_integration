@@ -4,14 +4,14 @@
 VALID_CONFIGS = [
     {
         "host": "192.168.1.100",
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "SDM120 Living Room",
         "model": "sdm120",
     },
     {
         "host": "192.168.1.101",
-        "port": 502,
+        "port": 4196,
         "unit_id": 2,
         "name": "SDM630 Main Panel",
         "model": "sdm630",
@@ -22,7 +22,7 @@ VALID_CONFIGS = [
 INVALID_CONFIGS = [
     # Missing host
     {
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "No Host",
         "model": "sdm120",
@@ -38,7 +38,7 @@ INVALID_CONFIGS = [
     # Invalid unit_id
     {
         "host": "192.168.1.103",
-        "port": 502,
+        "port": 4196,
         "unit_id": -1,
         "name": "Bad Unit",
         "model": "sdm120",
@@ -46,7 +46,7 @@ INVALID_CONFIGS = [
     # Name with special characters
     {
         "host": "192.168.1.104",
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "Bad@Name!",
         "model": "sdm120",
@@ -54,7 +54,7 @@ INVALID_CONFIGS = [
     # Unsupported model
     {
         "host": "192.168.1.105",
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "Unknown Model",
         "model": "sdm999",

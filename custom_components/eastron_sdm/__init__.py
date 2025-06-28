@@ -20,22 +20,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setting up Eastron SDM integration for entry: %s", entry.entry_id)
     hass.data.setdefault(DOMAIN, {})
-
     # Extract config entry data
     host = entry.data.get("host")
-    port = entry.data.get("port", 502)
+    port = entry.data.get("port", 4196)
     unit_id = entry.data.get("unit_id", 1)
     model = entry.data.get("model")
     device_name = entry.data.get("device_name", f"SDM_{entry.entry_id}")
+    timeout = entry.data.get("timeout", 10)
 
     # Create device instance (factory function must be implemented in device_models.py)
     device = create_device_instance(
         model=model,
+        unit_id=unit_id,
         host=host,
         port=port,
-        unit_id=unit_id,
+        timeout=timeout,
         name=device_name,
     )
+    # Set device_name attribute for device registry
+    device.device_name = device_name
+
+    # Set register_map based on model
+    from .device_models import SDM120RegisterMap, SDM630RegisterMap
+    if model == "SDM120":
+        device.register_map = list(SDM120RegisterMap.REGISTERS)
+    elif model == "SDM630":
+        device.register_map = list(SDM630RegisterMap.REGISTERS)
+    else:
+        device.register_map = []
+
+    # Initialize and connect pymodbus client
+    try:
+        from pymodbus.client import AsyncModbusTcpClient
+        device.client = AsyncModbusTcpClient(host=host, port=port)
+        await device.client.connect()
+    except Exception as exc:
+        _LOGGER.error("Failed to initialize Modbus client: %s", exc)
+        return False
 
     # Instantiate multi-tier coordinator
     coordinator = SDMMultiTierCoordinator(
@@ -51,15 +72,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "device": device,
     }
 
+    # Forward setup to supported platforms
+    PLATFORMS = ["sensor", "number", "button", "select"]
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("Unloading Eastron SDM integration for entry: %s", entry.entry_id)
-    # Placeholder for unloading platforms and cleanup
+    PLATFORMS = ["sensor", "number", "button", "select"]
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data[DOMAIN].pop(entry.entry_id, None)
-    return True
+    return unload_ok
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

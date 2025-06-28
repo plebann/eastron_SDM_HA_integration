@@ -5,7 +5,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 SDM120_CONFIG = {
     "host": "192.168.1.100",
-    "port": 502,
+    "port": 4196,
     "unit_id": 1,
     "name": "SDM120 Test",
     "model": "sdm120",
@@ -13,7 +13,7 @@ SDM120_CONFIG = {
 
 SDM630_CONFIG = {
     "host": "192.168.1.101",
-    "port": 502,
+    "port": 4196,
     "unit_id": 1,
     "name": "SDM630 Test",
     "model": "sdm630",

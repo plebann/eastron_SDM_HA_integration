@@ -88,7 +88,7 @@ from homeassistant.config_entries import ConfigEntry
 
 # Constants in const.py
 DOMAIN = "eastron_sdm"
-DEFAULT_PORT = 502
+DEFAULT_PORT = 4196
 DEFAULT_TIMEOUT = 10
 ```
 

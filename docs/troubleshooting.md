@@ -7,9 +7,9 @@ This guide helps resolve common issues encountered when using the Eastron SDM En
 ## Connection Issues
 
 ### Cannot connect to meter
-- Verify the meter's IP address, port (default: 502), and unit ID (default: 1).
+- Verify the meter's IP address, port (default: 4196), and unit ID (default: 1).
 - Ensure the meter is powered on and connected to the network.
-- Check for firewall or network restrictions blocking Modbus TCP (port 502).
+- Check for firewall or network restrictions blocking Modbus TCP (port 4196).
 - Try pinging the meter from your Home Assistant host.
 - Confirm the meter supports Modbus TCP and is not in use by another client.
 

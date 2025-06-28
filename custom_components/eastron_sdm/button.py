@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -40,12 +41,14 @@ async def async_setup_entry(
         else:
             return "normal"
 
+    device_info = getattr(multi_tier_coordinator, "device_info", None)
     entities = [
         SDMButtonEntity(
             multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
             entry,
             entity_def,
             device_name,
+            device_info,
         )
         for entity_def in button_entities
     ]
@@ -63,15 +66,32 @@ class SDMButtonEntity(ButtonEntity):
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,
+        device_info: Any,
     ) -> None:
         """Initialize the button entity."""
         self.coordinator = coordinator
         self.entity_def = entity_def
-        self._attr_unique_id = f"{device_name}_{entity_def.key}"
-        self._attr_translation_key = entity_def.key
+        key = getattr(entity_def, "parameter_key", None)
+        if key is None:
+            key = getattr(entity_def, "address", "unknown")
+        self._attr_unique_id = f"{device_name}_{key}"
+        translation_key = getattr(entity_def, "parameter_key", None)
+        if translation_key is None:
+            translation_key = str(getattr(entity_def, "address", "unknown"))
+        self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
-        self._attr_entity_category = entity_def.entity_category
-        self._attr_device_info = coordinator.device_info
+        # Map string category to EntityCategory enum if needed
+        category = getattr(entity_def, "category", None)
+        if category == "Config":
+            self._attr_entity_category = EntityCategory.CONFIG
+        elif category == "Diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        else:
+            self._attr_entity_category = None
+        self._attr_device_info = device_info
+        # Defensive: ensure required attributes for ButtonEntity are not None
+        if hasattr(entity_def, "confirmation") and getattr(entity_def, "confirmation", None) is None:
+            self._attr_confirmation = False
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     async def async_press(self) -> None:

@@ -42,12 +42,14 @@ async def async_setup_entry(
         else:
             return "normal"
 
+    device_info = getattr(multi_tier_coordinator, "device_info", None)
     entities = [
         SDMSelectEntity(
             multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
             entry,
             entity_def,
             device_name,
+            device_info,
         )
         for entity_def in select_entities
     ]
@@ -65,16 +67,31 @@ class SDMSelectEntity(SelectEntity):
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,
+        device_info: Any,
     ) -> None:
         """Initialize the select entity."""
         self.coordinator = coordinator
         self.entity_def = entity_def
-        self._attr_unique_id = f"{device_name}_{entity_def.key}"
-        self._attr_translation_key = entity_def.key
+        key = getattr(entity_def, "parameter_key", None)
+        if key is None:
+            key = getattr(entity_def, "address", "unknown")
+        self._attr_unique_id = f"{device_name}_{key}"
+        translation_key = getattr(entity_def, "parameter_key", None)
+        if translation_key is None:
+            translation_key = str(getattr(entity_def, "address", "unknown"))
+        self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
-        self._attr_options = entity_def.options
-        self._attr_entity_category = entity_def.entity_category
-        self._attr_device_info = coordinator.device_info
+        self._attr_options = entity_def.options if getattr(entity_def, "options", None) is not None else []
+        # Map string category to EntityCategory enum if needed
+        category = getattr(entity_def, "category", None)
+        from homeassistant.helpers.entity import EntityCategory
+        if category == "Config":
+            self._attr_entity_category = EntityCategory.CONFIG
+        elif category == "Diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        else:
+            self._attr_entity_category = None
+        self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     @property

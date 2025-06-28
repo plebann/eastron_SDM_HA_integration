@@ -13,7 +13,7 @@ async def test_yaml_import_functionality(hass: HomeAssistant):
     # Simulate YAML import source
     yaml_config = {
         "host": "192.168.1.150",
-        "port": 502,
+        "port": 4196,
         "unit_id": 3,
         "name": "SDM120 YAML",
     }
@@ -35,7 +35,7 @@ async def test_config_validation_logic(hass: HomeAssistant):
     """Test configuration validation logic for edge cases."""
     # Invalid config: missing host
     invalid_config = {
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "No Host",
     }

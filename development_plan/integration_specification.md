@@ -23,7 +23,7 @@ custom_components/eastron_sdm/
 ```
 
 **2. Configuration Flow Steps**
-- **Connection Setup**: IP, port (502), unit_id (1), timeout (10s)
+- **Connection Setup**: IP, port (4196), unit_id (1), timeout (10s)
 - **Device Detection**: Auto-detect via register 0x0040 read attempt
 - **Device Naming**: User provides friendly name (validation: no special chars)
 - **Entity Categories**: Checkboxes for Basic (default), Advanced, Diagnostic (unchecked)
