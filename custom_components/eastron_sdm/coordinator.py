@@ -33,6 +33,7 @@ class SDMDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Any:
         """Fetch data for this polling tier."""
+        _LOGGER.debug("SDMDataUpdateCoordinator: _async_update_data called for device %s", getattr(self.device, "device_name", self.device))
         import time
 
         if not hasattr(self, "poll_stats"):
@@ -167,6 +168,7 @@ class SDMMultiTierCoordinator:
 
     async def async_refresh_all(self):
         """Refresh all tiers."""
+        _LOGGER.debug("SDMMultiTierCoordinator: Starting async_refresh_all for all tiers")
         await self.coordinators["fast"].async_refresh()
         await self.coordinators["normal"].async_refresh()
         await self.coordinators["slow"].async_refresh()
@@ -192,6 +194,10 @@ class SDMTierDeviceProxy:
 
     async def async_read_registers(self, address: int, count: int = 1):
         """Delegate register reads to the underlying device (ensures lock is used)."""
+        _LOGGER.debug(
+            "SDMTierDeviceProxy: async_read_registers called for address 0x%04X, count %d, device=%s",
+            address, count, repr(self._device)
+        )
         return await self._device.async_read_registers(address, count)
 
 
