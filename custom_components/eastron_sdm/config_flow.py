@@ -17,7 +17,7 @@ except ImportError:
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN, CATEGORY_BASIC, CATEGORY_ADVANCED, CATEGORY_DIAGNOSTIC
-from .exceptions import SDMConnectionError
+from custom_components.eastron_sdm.exceptions import SDMConnectionError
 from .device_models import async_detect_device_model
 
 _LOGGER = logging.getLogger(__name__)
