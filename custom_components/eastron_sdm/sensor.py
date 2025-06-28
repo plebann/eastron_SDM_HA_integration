@@ -28,14 +28,27 @@ class SDMSensorEntity(CoordinatorEntity, SensorEntity):
     ):
         super().__init__(coordinator)
         self._register = register
+        self._device_name = device_name
         self._attr_translation_key = register.parameter_key
-        self._attr_name = None  # Use translation
+        # Title-case entity name: "Eastron SDM {device_name} {register.name}"
+        self._attr_name = f"Eastron SDM {device_name} {register.name}".title()
         self._attr_unique_id = f"{device_name}_{register.parameter_key}"
         self._attr_native_unit_of_measurement = register.units
         self._attr_device_class = register.device_class
         self._attr_state_class = getattr(register, "state_class", None)
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(register, "category", None) == "Basic")
+
+    @property
+    def device_info(self):
+        """Return device info for Home Assistant device registry."""
+        # Use the same identifiers as in device_models.py
+        return {
+            "identifiers": {("eastron_sdm", self._device_name)},
+            "name": f"Eastron SDM {self._device_name}",
+            "manufacturer": "Eastron",
+            "model": "SDM Meter",
+        }
 
     @property
     def native_value(self) -> float | None:

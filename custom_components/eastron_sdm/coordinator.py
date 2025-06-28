@@ -190,6 +190,10 @@ class SDMTierDeviceProxy:
         """Return device info for Home Assistant device registry."""
         return self.device.device_info() if self.device else None
 
+    async def async_read_registers(self, address: int, count: int = 1):
+        """Delegate register reads to the underlying device (ensures lock is used)."""
+        return await self._device.async_read_registers(address, count)
+
     async def _async_get_client(self):
         """Get or create the Modbus TCP client."""
         if self._client is not None:
