@@ -12,15 +12,15 @@ from custom_components.eastron_sdm.const import DOMAIN
     "user_input,expected_error",
     [
         # Missing host
-        ({"host": "", "port": 502, "unit_id": 1, "name": "No Host"}, "host"),
+        ({"host": "", "port": 4196, "unit_id": 1, "name": "No Host"}, "host"),
         # Invalid port (string)
         ({"host": "192.168.1.10", "port": "not_a_port", "unit_id": 1, "name": "Bad Port"}, "port"),
         # Invalid port (out of range)
         ({"host": "192.168.1.10", "port": 70000, "unit_id": 1, "name": "Bad Port"}, "port"),
         # Invalid unit_id (negative)
-        ({"host": "192.168.1.10", "port": 502, "unit_id": -1, "name": "Bad Unit"}, "unit_id"),
+        ({"host": "192.168.1.10", "port": 4196, "unit_id": -1, "name": "Bad Unit"}, "unit_id"),
         # Name with special characters
-        ({"host": "192.168.1.10", "port": 502, "unit_id": 1, "name": "Bad@Name!"}, "name"),
+        ({"host": "192.168.1.10", "port": 4196, "unit_id": 1, "name": "Bad@Name!"}, "name"),
     ],
 )
 async def test_invalid_user_input_validation(hass: HomeAssistant, user_input, expected_error):
@@ -47,7 +47,7 @@ async def test_connection_failure_scenario(hass: HomeAssistant):
     """Test connection failure scenario during config flow."""
     user_input = {
         "host": "192.168.1.200",
-        "port": 502,
+        "port": 4196,
         "unit_id": 1,
         "name": "Connection Fail",
     }

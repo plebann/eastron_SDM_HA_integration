@@ -64,14 +64,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data_schema = vol.Schema(
             {
                 vol.Required("host"): str,
-                vol.Required("port", default=502): int,
+                vol.Required("port", default=4196): int,
                 vol.Required("unit_id", default=1): int,
             }
         )
         if user_input is not None:
             # Validate host
             host = user_input.get("host", "").strip()
-            port = user_input.get("port", 502)
+            port = user_input.get("port", 4196)
             unit_id = user_input.get("unit_id", 1)
             if not host:
                 errors["host"] = "host_required"
@@ -223,7 +223,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 client = AsyncModbusTcpClient(host=host, port=port)
                 await client.connect()
-                result = await client.read_holding_registers(0x0000, 2, slave=unit_id)
+                result = await client.read_holding_registers(0x0000, 2, unit=unit_id)
                 if not hasattr(result, "registers") or result.isError():
                     await client.close()
                     raise SDMConnectionError("No response or error from device")

@@ -20,7 +20,7 @@ async def test_connection_establishment_and_management(hass: HomeAssistant):
         coordinator = SDMDataUpdateCoordinator(
             hass,
             host="192.168.1.100",
-            port=502,
+            port=4196,
             unit_id=1,
             model="sdm120",
             polling_interval=10,
@@ -44,7 +44,7 @@ async def test_data_parsing_and_transformation(hass: HomeAssistant):
         coordinator = EastronSDMDataUpdateCoordinator(
             hass,
             host="192.168.1.100",
-            port=502,
+            port=4196,
             unit_id=1,
             model="sdm120",
             polling_interval=10,
@@ -70,7 +70,7 @@ async def test_error_handling_and_recovery(hass: HomeAssistant):
         coordinator = EastronSDMDataUpdateCoordinator(
             hass,
             host="192.168.1.100",
-            port=502,
+            port=4196,
             unit_id=1,
             model="sdm120",
             polling_interval=10,

@@ -21,7 +21,7 @@ async def test_successful_data_update_cycle(hass: HomeAssistant):
         coordinator = SDMDataUpdateCoordinator(
             hass,
             host="192.168.1.100",
-            port=502,
+            port=4196,
             unit_id=1,
             model="sdm120",
             polling_interval=10,

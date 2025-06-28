@@ -16,7 +16,7 @@ async def test_duplicate_device_prevention(hass: HomeAssistant):
         domain=DOMAIN,
         data={
             "host": "192.168.1.100",
-            "port": 502,
+            "port": 4196,
             "unit_id": 1,
             "name": "SDM120 Test",
             "model": "sdm120",
@@ -37,7 +37,7 @@ async def test_duplicate_device_prevention(hass: HomeAssistant):
         # Try to add the same device again
         user_input = {
             "host": "192.168.1.100",
-            "port": 502,
+            "port": 4196,
             "unit_id": 1,
             "name": "SDM120 Test",
         }
@@ -55,7 +55,7 @@ async def test_configuration_options_flow(hass: HomeAssistant):
         domain=DOMAIN,
         data={
             "host": "192.168.1.101",
-            "port": 502,
+            "port": 4196,
             "unit_id": 2,
             "name": "SDM630 Main Panel",
             "model": "sdm630",

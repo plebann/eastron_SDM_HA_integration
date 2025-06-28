@@ -17,7 +17,7 @@ This is an example of the configuration you can export and later import via the 
 ```json
 {
   "host": "192.168.1.50",
-  "port": 502,
+  "port": 4196,
   "unit_id": 1,
   "device_name": "main_panel",
   "model": "SDM120",
