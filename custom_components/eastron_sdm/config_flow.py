@@ -244,7 +244,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
-        return EastronSDMOptionsFlowHandler(config_entry)
+        return EastronSDMOptionsFlowHandler()
 
 class EastronSDMOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Eastron SDM."""
