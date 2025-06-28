@@ -42,12 +42,14 @@ async def async_setup_entry(
         else:
             return "normal"
 
+    device_info = getattr(multi_tier_coordinator, "device_info", None)
     entities = [
         SDMSelectEntity(
             multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
             entry,
             entity_def,
             device_name,
+            device_info,
         )
         for entity_def in select_entities
     ]
@@ -65,6 +67,7 @@ class SDMSelectEntity(SelectEntity):
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,
+        device_info: Any,
     ) -> None:
         """Initialize the select entity."""
         self.coordinator = coordinator
@@ -80,7 +83,7 @@ class SDMSelectEntity(SelectEntity):
         self._attr_name = None  # Use translation
         self._attr_options = entity_def.options
         self._attr_entity_category = getattr(entity_def, "category", None)
-        self._attr_device_info = coordinator.device_info
+        self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     @property

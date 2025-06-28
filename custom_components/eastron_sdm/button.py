@@ -40,12 +40,14 @@ async def async_setup_entry(
         else:
             return "normal"
 
+    device_info = getattr(multi_tier_coordinator, "device_info", None)
     entities = [
         SDMButtonEntity(
             multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
             entry,
             entity_def,
             device_name,
+            device_info,
         )
         for entity_def in button_entities
     ]
@@ -63,6 +65,7 @@ class SDMButtonEntity(ButtonEntity):
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,
+        device_info: Any,
     ) -> None:
         """Initialize the button entity."""
         self.coordinator = coordinator
@@ -77,7 +80,7 @@ class SDMButtonEntity(ButtonEntity):
         self._attr_translation_key = translation_key
         self._attr_name = None  # Use translation
         self._attr_entity_category = getattr(entity_def, "category", None)
-        self._attr_device_info = coordinator.device_info
+        self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     async def async_press(self) -> None:

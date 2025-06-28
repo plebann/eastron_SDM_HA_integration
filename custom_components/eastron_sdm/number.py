@@ -45,12 +45,14 @@ async def async_setup_entry(
         else:
             return "normal"
 
+    device_info = getattr(multi_tier_coordinator, "device_info", None)
     entities = [
         SDMNumberEntity(
             multi_tier_coordinator.coordinators[get_tier_for_category(getattr(entity_def, "category", "normal"))],
             entry,
             entity_def,
             device_name,
+            device_info,
         )
         for entity_def in number_entities
     ]
@@ -69,6 +71,7 @@ class SDMNumberEntity(NumberEntity):
         entry: ConfigEntry,
         entity_def: Any,
         device_name: str,
+        device_info: Any,
     ) -> None:
         """Initialize the number entity."""
         self.coordinator = coordinator
@@ -88,7 +91,7 @@ class SDMNumberEntity(NumberEntity):
         self._attr_native_unit_of_measurement = entity_def.units
         self._attr_device_class = entity_def.device_class
         self._attr_entity_category = getattr(entity_def, "category", None)
-        self._attr_device_info = coordinator.device_info
+        self._attr_device_info = device_info
         # Enable by default only for Basic category
         self._attr_entity_registry_enabled_default = (getattr(entity_def, "category", None) == "Basic")
     @property
