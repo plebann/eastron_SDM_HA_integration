@@ -14,7 +14,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-class EastronSDMConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow handler for Eastron SDM integration.
 
     Guides the user through connection setup, device naming, entity category selection,
