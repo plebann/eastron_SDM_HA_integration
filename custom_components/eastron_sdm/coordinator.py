@@ -194,25 +194,6 @@ class SDMTierDeviceProxy:
         """Delegate register reads to the underlying device (ensures lock is used)."""
         return await self._device.async_read_registers(address, count)
 
-    async def _async_get_client(self):
-        """Get or create the Modbus TCP client."""
-        if self._client is not None:
-            return self._client
-        try:
-            from pymodbus.client.async_tcp import AsyncModbusTCPClient
-        except ImportError:
-            raise UpdateFailed("pymodbus not installed")
-        self._client = AsyncModbusTCPClient(
-            host=self.device.host, port=self.device.port
-        )
-        await self._client.connect()
-        return self._client
-
-    async def _async_close_client(self):
-        """Close the Modbus TCP client."""
-        if self._client is not None:
-            await self._client.close()
-            self._client = None
 
     async def _async_update_data(self) -> Any:
         """Fetch data from the device with retry logic and track polling statistics."""
@@ -232,8 +213,6 @@ class SDMTierDeviceProxy:
         for attempt in range(1, max_attempts + 1):
             start = time.monotonic()
             try:
-                client = await self._async_get_client()
-                self.device.client = client
                 registers = getattr(self.device, "register_map", None)
                 if registers is not None:
                     batches = self._group_registers_for_batch(registers)
