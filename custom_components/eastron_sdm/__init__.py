@@ -26,6 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unit_id = entry.data.get("unit_id", 1)
     model = entry.data.get("model")
     device_name = entry.data.get("device_name", f"SDM_{entry.entry_id}")
+    timeout = entry.data.get("timeout", 10)
 
     # Create device instance (factory function must be implemented in device_models.py)
     device = create_device_instance(
