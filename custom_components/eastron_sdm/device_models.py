@@ -75,7 +75,10 @@ class SDMDevice:
 
         try:
             async with self._lock:
-                # This assumes pymodbus async client with read_holding_registers method
+                # Attempt reconnect if client is disconnected
+                if hasattr(self.client, "connected") and not self.client.connected:
+                    _LOGGER.warning("Modbus client disconnected, attempting reconnect to %s:%s", self.host, self.port)
+                    await self.client.connect()
                 result = await self.client.read_holding_registers(address, count)
             if not result.isError():
                 _LOGGER.debug("Read %d registers at 0x%04X from %s: %s", count, address, self.host, result.registers)
@@ -83,6 +86,13 @@ class SDMDevice:
             _LOGGER.error("Modbus error reading registers at 0x%04X from %s", address, self.host)
         except Exception as exc:
             _LOGGER.error("Exception reading registers at 0x%04X from %s: %s", address, self.host, exc)
+            # Attempt reconnect on error
+            try:
+                if self.client is not None:
+                    await self.client.close()
+                    await self.client.connect()
+            except Exception as reconnect_exc:
+                _LOGGER.error("Failed to reconnect Modbus client: %s", reconnect_exc)
         return None
 
     def device_info(self) -> Dict[str, Any]:
