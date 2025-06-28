@@ -69,6 +69,10 @@ class SDMDevice:
         Returns:
             List of register values, or None if read fails.
         """
+        _LOGGER.warning(
+            "TEST: async_read_registers called for address 0x%04X, count %d, device %s:%s",
+            address, count, self.host, self.port
+        )
         if self.client is None:
             _LOGGER.error("Modbus client not initialized for device at %s:%s", self.host, self.port)
             return None
