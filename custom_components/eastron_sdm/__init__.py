@@ -20,7 +20,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setting up Eastron SDM integration for entry: %s", entry.entry_id)
     hass.data.setdefault(DOMAIN, {})
-
     # Extract config entry data
     host = entry.data.get("host")
     port = entry.data.get("port", 4196)
@@ -61,9 +60,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("Unloading Eastron SDM integration for entry: %s", entry.entry_id)
-    # Placeholder for unloading platforms and cleanup
+    PLATFORMS = ["sensor", "number", "button", "select"]
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data[DOMAIN].pop(entry.entry_id, None)
-    return True
+    return unload_ok
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
