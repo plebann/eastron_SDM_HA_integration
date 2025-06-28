@@ -140,9 +140,11 @@ class SDMDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 if reg.data_type == "Float" and reg_words == 2:
                     # SDM meters require swapped word order for float32
-                    val = struct.unpack(">f", struct.pack(">HH", regs[1], regs[0]))[0]
+                    swapped_val = struct.unpack(">f", struct.pack(">HH", regs[1], regs[0]))[0]
+                    normal_val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
                     _LOGGER.debug(
-                        "Register debug: name=%s, decoded float value=%s", reg.name, val
+                        "Register debug: name=%s, address=0x%04X, raw_regs=%s, swapped_regs=%s, float(swapped)=%s, float(normal)=%s",
+                        reg.name, reg.address, regs, [regs[1], regs[0]], swapped_val, normal_val
                     )
                 elif reg.data_type == "UInt32" and reg_words == 2:
                     val = (regs[0] << 16) | regs[1]
@@ -254,6 +256,9 @@ class SDMTierDeviceProxy:
                     results = {}
                     for start_addr, count, reg_defs in batches:
                         raw = await self.device.async_read_registers(start_addr, count)
+                        _LOGGER.debug(
+                            "SDMTierDeviceProxy: async_read_registers called for address 0x%04X, count %d, raw=%s",
+                            start_addr, count, raw)
                         parsed = self._parse_and_validate_registers(raw, reg_defs)
                         results.update(parsed)
                     duration = time.monotonic() - start
