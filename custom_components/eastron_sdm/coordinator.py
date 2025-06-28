@@ -134,9 +134,15 @@ class SDMDataUpdateCoordinator(DataUpdateCoordinator):
                     idx += reg_words
                     continue
                 regs = raw_values[idx:idx + reg_words]
+                _LOGGER.debug(
+                    "Register debug: name=%s, address=0x%04X, raw_regs=%s, reg_words=%d",
+                    reg.name, reg.address, regs, reg_words
+                )
                 if reg.data_type == "Float" and reg_words == 2:
-                    # Combine two 16-bit registers into 32-bit float (big endian)
                     val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
+                    _LOGGER.debug(
+                        "Register debug: name=%s, decoded float value=%s", reg.name, val
+                    )
                 elif reg.data_type == "UInt32" and reg_words == 2:
                     val = (regs[0] << 16) | regs[1]
                 elif reg.data_type == "HEX":

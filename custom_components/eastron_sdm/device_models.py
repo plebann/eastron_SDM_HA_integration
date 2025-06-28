@@ -139,16 +139,16 @@ class SDM120RegisterMap:
     REGISTERS: tuple[SDMRegister, ...] = (
         # Fast polling (5s)
         SDMRegister(0x0000, True, "voltage", "Voltage", 4, "V", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.VOLTAGE, polling="fast"),
-        SDMRegister(0x0006, True, "current", "Current", 4, "A", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.CURRENT, polling="fast"),
-        SDMRegister(0x000C, True, "power", "Power", 4, "W", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.POWER, polling="fast"),
+        SDMRegister(0x0006, False, "current", "Current", 4, "A", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.CURRENT, polling="fast"),
+        SDMRegister(0x000C, False, "power", "Power", 4, "W", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.POWER, polling="fast"),
         # Normal polling (30s)
-        SDMRegister(0x0012, True, "apparent_power", "Apparent power", 4, "VA", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.APPARENT_POWER, polling="normal"),
-        SDMRegister(0x0018, True, "reactive_power", "Reactive power", 4, "VAr", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.REACTIVE_POWER, polling="normal"),
-        SDMRegister(0x001E, True, "power_factor", "Power factor", 4, None, "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.POWER_FACTOR, polling="normal"),
-        SDMRegister(0x0046, True, "frequency", "Frequency", 4, "Hz", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.FREQUENCY, polling="normal"),
+        SDMRegister(0x0012, False, "apparent_power", "Apparent power", 4, "VA", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.APPARENT_POWER, polling="normal"),
+        SDMRegister(0x0018, False, "reactive_power", "Reactive power", 4, "VAr", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.REACTIVE_POWER, polling="normal"),
+        SDMRegister(0x001E, False, "power_factor", "Power factor", 4, None, "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.POWER_FACTOR, polling="normal"),
+        SDMRegister(0x0046, False, "frequency", "Frequency", 4, "Hz", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.FREQUENCY, polling="normal"),
         # Slow polling (300s)
-        SDMRegister(0x0048, True, "import_energy", "Import energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY, polling="slow"),
-        SDMRegister(0x004A, True, "export_energy", "Export energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY, polling="slow"),
+        SDMRegister(0x0048, False, "import_energy", "Import energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY, polling="slow"),
+        SDMRegister(0x004A, False, "export_energy", "Export energy", 4, "kWh", "Float", 1.0, "RO", "sensor", "Basic", SensorDeviceClass.ENERGY, polling="slow"),
         SDMRegister(0x004C, False, "import_reactive_energy", "Import reactive energy", 4, "kvarh", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.ENERGY, polling="slow"),
         SDMRegister(0x004E, False, "export_reactive_energy", "Export reactive energy", 4, "kvarh", "Float", 1.0, "RO", "sensor", "Advanced", SensorDeviceClass.ENERGY, polling="slow"),
         SDMRegister(0x0054, False, "total_system_power_demand", "Total system power demand", 4, "W", "Float", 1.0, "RO", "sensor", "Diagnostic", SensorDeviceClass.POWER, polling="slow"),
