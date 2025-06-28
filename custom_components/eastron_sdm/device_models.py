@@ -69,7 +69,7 @@ class SDMDevice:
 
         try:
             # This assumes pymodbus async client with read_holding_registers method
-            result = await self.client.read_holding_registers(address, count, unit=self.unit_id)
+            result = await self.client.read_holding_registers(address, count)
             if not result.isError():
                 _LOGGER.debug("Read %d registers at 0x%04X from %s: %s", count, address, self.host, result.registers)
                 return result.registers
@@ -230,11 +230,11 @@ async def async_detect_device_model(client: Any, unit_id: int) -> Optional[str]:
     """
     try:
         # Try SDM630-specific register (Phase 2 L-N Voltage at 0x0002)
-        result_630 = await client.read_holding_registers(0x0002, 2, unit=unit_id)
+        result_630 = await client.read_holding_registers(0x0002, 2)
         if hasattr(result_630, "registers") and not result_630.isError():
             return "SDM630"
         # Try SDM120-specific register (Voltage at 0x0000)
-        result_120 = await client.read_holding_registers(0x0000, 2, unit=unit_id)
+        result_120 = await client.read_holding_registers(0x0000, 2)
         if hasattr(result_120, "registers") and not result_120.isError():
             return "SDM120"
     except Exception as exc:
