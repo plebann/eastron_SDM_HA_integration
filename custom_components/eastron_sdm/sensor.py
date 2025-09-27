@@ -8,8 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import DEVICE_CLASS_ENERGY
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 
 from .const import DOMAIN, CONF_ENABLE_ADVANCED, CONF_ENABLE_DIAGNOSTIC
 from .coordinator import SdmCoordinator, DecodedValue
@@ -45,9 +44,27 @@ class SdmSensor(CoordinatorEntity[SdmCoordinator], SensorEntity):
         base_name: str = entry.data.get("name", f"SDM120 {coordinator.host}")
         self._attr_name = f"{base_name} {self._friendly_part(spec.key)}"
         self._attr_unique_id = f"eastron_sdm_{coordinator.host}_{coordinator.unit_id}_{spec.key}"
-        self._attr_device_class = spec.device_class
+        # Map spec.device_class/state_class strings to modern enums where possible
+        if spec.device_class == "energy":
+            self._attr_device_class = SensorDeviceClass.ENERGY
+        elif spec.device_class == "power":
+            self._attr_device_class = SensorDeviceClass.POWER
+        elif spec.device_class == "voltage":
+            self._attr_device_class = SensorDeviceClass.VOLTAGE
+        elif spec.device_class == "current":
+            self._attr_device_class = SensorDeviceClass.CURRENT
+        elif spec.device_class == "frequency":
+            self._attr_device_class = SensorDeviceClass.FREQUENCY
+        else:
+            self._attr_device_class = None
+
         self._attr_native_unit_of_measurement = spec.unit
-        self._attr_state_class = spec.state_class
+        if spec.state_class == "total_increasing":
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        elif spec.state_class == "measurement":
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        else:
+            self._attr_state_class = None
         # Home Assistant built-ins for energy device class constant above is maintained for compatibility
 
     @staticmethod
