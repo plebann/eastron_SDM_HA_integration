@@ -1,0 +1,16 @@
+{
+  "domain": "eastron_sdm",
+  "name": "Eastron SDM Meter",
+  "version": "0.1.0",
+  "documentation": "https://github.com/plebann/eastron_SDM_HA_integration",
+  "issue_tracker": "https://github.com/plebann/eastron_SDM_HA_integration/issues",
+  "requirements": [
+    "pymodbus==3.6.9"
+  ],
+  "codeowners": ["@plebann"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "loggers": ["pymodbus", "custom_components.eastron_sdm"],
+  "homekit": {},
+  "integration_type": "device"
+}

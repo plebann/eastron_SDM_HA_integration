@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Eastron SDM120 Meter",
+        "description": "Configure connection for SDM120 over RTU-over-TCP.",
+        "data": {
+          "name": "Friendly Name",
+          "host": "Host",
+            "port": "Port",
+            "unit_id": "Modbus Unit ID",
+            "scan_interval": "Base Scan Interval (s)",
+            "enable_advanced": "Enable advanced sensors",
+            "enable_diagnostic": "Enable diagnostic sensors",
+            "normal_divisor": "Normal tier divisor",
+            "slow_divisor": "Slow tier divisor",
+            "debug": "Enable debug logging"
+        }
+      }
+    },
+    "error": {
+      "min_value": "Value below allowed minimum",
+      "invalid": "Invalid value"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Eastron SDM Options",
+        "data": {
+          "scan_interval": "Base Scan Interval (s)",
+          "enable_advanced": "Enable advanced sensors",
+          "enable_diagnostic": "Enable diagnostic sensors",
+          "normal_divisor": "Normal tier divisor",
+          "slow_divisor": "Slow tier divisor",
+          "debug": "Enable debug logging"
+        }
+      }
+    }
+  }
+}

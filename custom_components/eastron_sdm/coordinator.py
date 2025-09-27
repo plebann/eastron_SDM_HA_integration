@@ -1,0 +1,143 @@
+"""DataUpdateCoordinator for Eastron SDM meters."""
+from __future__ import annotations
+
+import asyncio
+import logging
+import struct
+from dataclasses import dataclass
+from datetime import timedelta, datetime
+from typing import Any, Iterable
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.config_entries import ConfigEntry
+
+from .const import (
+    DOMAIN,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_UNIT_ID,
+    CONF_SCAN_INTERVAL,
+    CONF_ENABLE_ADVANCED,
+    CONF_ENABLE_DIAGNOSTIC,
+    CONF_NORMAL_DIVISOR,
+    CONF_SLOW_DIVISOR,
+    CONF_DEBUG,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_NORMAL_DIVISOR,
+    DEFAULT_SLOW_DIVISOR,
+)
+from .client import SdmModbusClient
+from .models.sdm120 import get_register_specs, RegisterSpec
+
+_LOGGER = logging.getLogger(__name__)
+
+@dataclass(slots=True)
+class DecodedValue:
+    key: str
+    value: float | int | None
+    updated: datetime
+
+@dataclass(slots=True)
+class _Batch:
+    start: int
+    length: int
+    specs: list[RegisterSpec]
+
+class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.entry = entry
+        data = {**entry.data, **entry.options}
+        self.host: str = data[CONF_HOST]
+        self.port: int = data.get(CONF_PORT, 502)
+        self.unit_id: int = data.get(CONF_UNIT_ID, 1)
+        self.scan_interval: int = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        self.normal_divisor: int = data.get(CONF_NORMAL_DIVISOR, DEFAULT_NORMAL_DIVISOR)
+        self.slow_divisor: int = data.get(CONF_SLOW_DIVISOR, DEFAULT_SLOW_DIVISOR)
+        self.enable_advanced: bool = data.get(CONF_ENABLE_ADVANCED, False)
+        self.enable_diagnostic: bool = data.get(CONF_ENABLE_DIAGNOSTIC, False)
+        self.debug: bool = data.get(CONF_DEBUG, False)
+
+        self._client = SdmModbusClient(self.host, self.port, self.unit_id)
+        self._cycle = 0
+        self._failure_count = 0
+        self._specs = get_register_specs(
+            enable_advanced=self.enable_advanced,
+            enable_diagnostic=self.enable_diagnostic,
+        )
+        self._fast = [s for s in self._specs if s.tier == "fast"]
+        self._normal = [s for s in self._specs if s.tier == "normal"]
+        self._slow = [s for s in self._specs if s.tier == "slow"]
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"SDM {self.host}:{self.port} unit {self.unit_id}",
+            update_interval=timedelta(seconds=self.scan_interval),
+        )
+
+    async def _async_update_data(self) -> dict[str, DecodedValue]:  # type: ignore[override]
+        try:
+            specs_to_read = list(self._fast)
+            if self._cycle % self.normal_divisor == 0:
+                specs_to_read.extend(self._normal)
+            if self._cycle % self.slow_divisor == 0:
+                specs_to_read.extend(self._slow)
+            self._cycle = (self._cycle + 1) % (self.normal_divisor * self.slow_divisor)
+
+            decoded: dict[str, DecodedValue] = {**(self.data or {})}
+
+            for batch in _build_batches(specs_to_read):
+                raw = await self._client.read_input_registers(batch.start, batch.length)
+                if self.debug:
+                    _LOGGER.debug(
+                        "Batch read start=%s len=%s specs=%s", batch.start, batch.length, [s.key for s in batch.specs]
+                    )
+                # Slice out per spec
+                for spec in batch.specs:
+                    offset = spec.address - batch.start
+                    regs = raw.registers[offset: offset + spec.length]
+                    value = _decode(spec, regs)
+                    decoded[spec.key] = DecodedValue(key=spec.key, value=value, updated=datetime.utcnow())
+                    if self.debug:
+                        _LOGGER.debug("Decoded %s -> %s", spec.key, value)
+
+            self._failure_count = 0
+            return decoded
+        except Exception as exc:  # broad to ensure coordinator handles availability
+            self._failure_count += 1
+            raise UpdateFailed(str(exc)) from exc
+
+    async def async_close(self) -> None:
+        await self._client.close()
+
+
+def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
+    if spec.data_type == "float32":
+        if len(registers) < 2:
+            return None
+        combined = (registers[0] << 16) | registers[1]
+        return struct.unpack(">f", combined.to_bytes(4, byteorder="big"))[0]
+    return None
+
+
+def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
+    # Sort by address for grouping
+    ordered = sorted(specs, key=lambda s: s.address)
+    batches: list[_Batch] = []
+    current: _Batch | None = None
+    for spec in ordered:
+        if current is None:
+            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+            continue
+        end = current.start + current.length
+        gap = spec.address - end
+        if gap <= 4:  # allow small gaps (reads extra registers) to merge
+            new_end = spec.address + spec.length
+            current.length = new_end - current.start
+            current.specs.append(spec)
+        else:
+            batches.append(current)
+            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+    if current:
+        batches.append(current)
+    return batches
