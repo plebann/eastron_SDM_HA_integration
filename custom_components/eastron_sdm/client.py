@@ -59,7 +59,33 @@ class SdmModbusClient:
     async def read_input_registers(self, address: int, count: int) -> ReadResult:
         await self.ensure_connected()
         assert self._client is not None
-        rr = await self._client.read_input_registers(address=address, count=count, unit=self._unit_id)
+        # pymodbus renamed the kwarg 'unit' -> 'slave' in newer 3.x releases.
+        # Detect which one is supported at runtime for maximum compatibility with HA's bundled version.
+        import inspect
+
+        method = self._client.read_input_registers
+        params = inspect.signature(method).parameters
+        kw: dict[str, Any] = {}
+        if "unit" in params:
+            kw["unit"] = self._unit_id
+        elif "slave" in params:  # newer
+            kw["slave"] = self._unit_id
+        else:
+            _LOGGER.warning(
+                "Neither 'unit' nor 'slave' parameter found in read_input_registers signature; proceeding without specifying unit id"
+            )
+        try:
+            rr = await method(address=address, count=count, **kw)
+        except TypeError as exc:
+            # Fallback attempt swapping parameter name if initial guess failed
+            if "unit" in kw:
+                alt_kw = {"slave": kw.pop("unit")}
+            elif "slave" in kw:
+                alt_kw = {"unit": kw.pop("slave")}
+            else:
+                raise
+            _LOGGER.debug("Retrying Modbus read with alternate kw: %s", alt_kw)
+            rr = await method(address=address, count=count, **alt_kw)
         if rr.isError():  # type: ignore[attr-defined]
             raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
         # rr.registers is a list[int]
