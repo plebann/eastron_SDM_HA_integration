@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.framer import ModbusRtuFramer
 from pymodbus.exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,7 +42,6 @@ class SdmModbusClient:
                 self._host,
                 port=self._port,
                 timeout=self._timeout,
-                framer=ModbusRtuFramer,
             )
             await self._client.connect()
             self._connected = bool(self._client.connected)  # type: ignore[attr-defined]
