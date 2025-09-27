@@ -1,97 +1,41 @@
 {
-  "title": "Eastron SDM Energy Meter",
   "config": {
     "step": {
-      "import": {
-        "title": "Import Configuration",
-        "description": "Optional: Paste exported configuration JSON to import, or skip to manual setup."
-      },
       "user": {
-        "title": "Connection Setup",
-        "description": "Enter the connection details for your SDM meter."
-      },
-      "name": {
-        "title": "Device Naming",
-        "description": "Enter a name for this meter."
-      },
-      "categories": {
-        "title": "Entity Category Selection",
-        "description": "Select which categories of entities to enable."
-      },
-      "polling": {
-        "title": "Polling Interval Customization",
-        "description": "Set polling intervals for different data types."
+        "title": "Add Eastron SDM120 Meter",
+        "description": "Configure connection for SDM120 over RTU-over-TCP.",
+        "data": {
+          "name": "Friendly Name",
+          "host": "Host",
+            "port": "Port",
+            "unit_id": "Modbus Unit ID",
+            "scan_interval": "Base Scan Interval (s)",
+            "enable_advanced": "Enable advanced sensors",
+            "enable_diagnostic": "Enable diagnostic sensors",
+            "normal_divisor": "Normal tier divisor",
+            "slow_divisor": "Slow tier divisor",
+            "debug": "Enable debug logging"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to the meter. Please verify the IP address, port, and unit ID, and ensure the device is powered on and reachable.",
-      "cannot_detect_model": "Device detected, but model could not be identified. Please check that you are connecting to a supported SDM meter.",
-      "duplicate_device": "A meter with this IP and unit ID is already configured. Please use a different combination.",
-      "unknown": "Unexpected error. Please check your settings and try again.",
-      "host_required": "Please enter the meter's IP address or hostname.",
-      "host_invalid": "Invalid IP address or hostname format.",
-      "port_invalid": "Port must be a number between 1 and 65535.",
-      "unit_id_invalid": "Unit ID must be a number between 1 and 247.",
-      "invalid_name": "Name must be alphanumeric (underscores and dashes allowed).",
-      "name_too_long": "Name must be 32 characters or fewer.",
-      "invalid_poll": "Polling intervals must be positive integers (seconds)."
-    },
-    "category": {
-      "basic": "Basic sensors (recommended, always enabled)",
-      "advanced": "Advanced sensors (optional, more detail)",
-      "diagnostic": "Diagnostic entities (optional, for troubleshooting)"
+      "min_value": "Value below allowed minimum",
+      "invalid": "Invalid value"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Edit Meter Options",
-        "description": "Edit configuration, polling intervals, or export the current configuration as JSON.\\n\\nDevice model: {model}\\nFirmware: {firmware}"
-      },
-      "export": {
-        "title": "Export Configuration",
-        "description": "Copy the configuration below to import elsewhere:\\n\\n```json\\n{export_json}\\n```"
+        "title": "Eastron SDM Options",
+        "data": {
+          "scan_interval": "Base Scan Interval (s)",
+          "enable_advanced": "Enable advanced sensors",
+          "enable_diagnostic": "Enable diagnostic sensors",
+          "normal_divisor": "Normal tier divisor",
+          "slow_divisor": "Slow tier divisor",
+          "debug": "Enable debug logging"
+        }
       }
-    }
-  },
-  "entity": {
-    "sensor": {
-      "voltage_l1": "Voltage L1",
-      "voltage_l2": "Voltage L2",
-      "voltage_l3": "Voltage L3",
-      "current_l1": "Current L1",
-      "current_l2": "Current L2",
-      "current_l3": "Current L3",
-      "frequency": "Frequency",
-      "total_energy_import": "Total Energy Import",
-      "total_energy_export": "Total Energy Export",
-      "active_power_l1": "Active Power L1",
-      "active_power_l2": "Active Power L2",
-      "active_power_l3": "Active Power L3",
-      "reactive_power_l1": "Reactive Power L1",
-      "reactive_power_l2": "Reactive Power L2",
-      "reactive_power_l3": "Reactive Power L3",
-      "apparent_power_l1": "Apparent Power L1",
-      "apparent_power_l2": "Apparent Power L2",
-      "apparent_power_l3": "Apparent Power L3",
-      "power_factor_l1": "Power Factor L1",
-      "power_factor_l2": "Power Factor L2",
-      "power_factor_l3": "Power Factor L3",
-      "thd_voltage_l1": "THD Voltage L1",
-      "thd_voltage_l2": "THD Voltage L2",
-      "thd_voltage_l3": "THD Voltage L3",
-      "thd_current_l1": "THD Current L1",
-      "thd_current_l2": "THD Current L2",
-      "thd_current_l3": "THD Current L3"
-    },
-    "number": {
-      "baud_rate": "Baud Rate",
-      "parity_setting": "Parity Setting",
-      "stop_bits": "Stop Bits"
-    },
-    "button": {
-      "reset_energy_counters": "Reset Energy Counters",
-      "reset_demand_values": "Reset Demand Values"
     }
   }
 }

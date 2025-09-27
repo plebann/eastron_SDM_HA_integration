@@ -1,356 +1,143 @@
-"""Data update coordinator for Eastron SDM integration."""
-
+"""DataUpdateCoordinator for Eastron SDM meters."""
 from __future__ import annotations
 
-from typing import Any
-from datetime import timedelta
+import asyncio
 import logging
+import struct
+from dataclasses import dataclass
+from datetime import timedelta, datetime
+from typing import Any, Iterable
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.config_entries import ConfigEntry
+
+from .const import (
+    DOMAIN,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_UNIT_ID,
+    CONF_SCAN_INTERVAL,
+    CONF_ENABLE_ADVANCED,
+    CONF_ENABLE_DIAGNOSTIC,
+    CONF_NORMAL_DIVISOR,
+    CONF_SLOW_DIVISOR,
+    CONF_DEBUG,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_NORMAL_DIVISOR,
+    DEFAULT_SLOW_DIVISOR,
+)
+from .client import SdmModbusClient
+from .models.sdm120 import get_register_specs, RegisterSpec
 
 _LOGGER = logging.getLogger(__name__)
 
-class SDMDataUpdateCoordinator(DataUpdateCoordinator):
-    """Base coordinator for Eastron SDM devices."""
+@dataclass(slots=True)
+class DecodedValue:
+    key: str
+    value: float | int | None
+    updated: datetime
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        name: str,
-        update_interval: timedelta,
-        device,
-    ):
-        """Initialize the coordinator."""
+@dataclass(slots=True)
+class _Batch:
+    start: int
+    length: int
+    specs: list[RegisterSpec]
+
+class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.entry = entry
+        data = {**entry.data, **entry.options}
+        self.host: str = data[CONF_HOST]
+        self.port: int = data.get(CONF_PORT, 502)
+        self.unit_id: int = data.get(CONF_UNIT_ID, 1)
+        self.scan_interval: int = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        self.normal_divisor: int = data.get(CONF_NORMAL_DIVISOR, DEFAULT_NORMAL_DIVISOR)
+        self.slow_divisor: int = data.get(CONF_SLOW_DIVISOR, DEFAULT_SLOW_DIVISOR)
+        self.enable_advanced: bool = data.get(CONF_ENABLE_ADVANCED, False)
+        self.enable_diagnostic: bool = data.get(CONF_ENABLE_DIAGNOSTIC, False)
+        self.debug: bool = data.get(CONF_DEBUG, False)
+
+        self._client = SdmModbusClient(self.host, self.port, self.unit_id)
+        self._cycle = 0
+        self._failure_count = 0
+        self._specs = get_register_specs(
+            enable_advanced=self.enable_advanced,
+            enable_diagnostic=self.enable_diagnostic,
+        )
+        self._fast = [s for s in self._specs if s.tier == "fast"]
+        self._normal = [s for s in self._specs if s.tier == "normal"]
+        self._slow = [s for s in self._specs if s.tier == "slow"]
         super().__init__(
             hass,
             _LOGGER,
-            name=name,
-            update_interval=update_interval,
+            name=f"SDM {self.host}:{self.port} unit {self.unit_id}",
+            update_interval=timedelta(seconds=self.scan_interval),
         )
-        self.device = device
-        self._client = None
 
-    async def _async_update_data(self) -> Any:
-        """Fetch data for this polling tier."""
-        _LOGGER.debug("SDMDataUpdateCoordinator: _async_update_data called for device %s", getattr(self.device, "device_name", self.device))
-        import time
+    async def _async_update_data(self) -> dict[str, DecodedValue]:  # type: ignore[override]
+        try:
+            specs_to_read = list(self._fast)
+            if self._cycle % self.normal_divisor == 0:
+                specs_to_read.extend(self._normal)
+            if self._cycle % self.slow_divisor == 0:
+                specs_to_read.extend(self._slow)
+            self._cycle = (self._cycle + 1) % (self.normal_divisor * self.slow_divisor)
 
-        if not hasattr(self, "poll_stats"):
-            self.poll_stats = {
-                "success_count": 0,
-                "failure_count": 0,
-                "last_update": None,
-                "last_error": None,
-                "avg_duration": 0.0,
-                "total_duration": 0.0,
-                "total_polls": 0,
-            }
-        max_attempts = 3
-        delay = 1
-        for attempt in range(1, max_attempts + 1):
-            start = time.monotonic()
-            try:
-                client = getattr(self.device, "client", None)
-                registers = getattr(self.device, "register_map", None)
-                results = {}
-                if registers is not None:
-                    batches = self._group_registers_for_batch(registers)
-                    for start_addr, count, reg_defs in batches:
-                        raw = await self.device.async_read_registers(start_addr, count)
-                        parsed = self._parse_and_validate_registers(raw, reg_defs)
-                        results.update(parsed)
-                    duration = time.monotonic() - start
-                    self.poll_stats["success_count"] += 1
-                    self.poll_stats["last_update"] = time.time()
-                    self.poll_stats["last_error"] = None
-                    self.poll_stats["total_duration"] += duration
-                    self.poll_stats["total_polls"] += 1
-                    self.poll_stats["avg_duration"] = (
-                        self.poll_stats["total_duration"] / self.poll_stats["total_polls"]
-                    )
-                    return results
-                data = await self.device.async_read_registers(0x0000, 2)
-                duration = time.monotonic() - start
-                self.poll_stats["success_count"] += 1
-                self.poll_stats["last_update"] = time.time()
-                self.poll_stats["last_error"] = None
-                self.poll_stats["total_duration"] += duration
-                self.poll_stats["total_polls"] += 1
-                self.poll_stats["avg_duration"] = (
-                    self.poll_stats["total_duration"] / self.poll_stats["total_polls"]
-                )
-                return data
-            except Exception as err:
-                self.poll_stats["failure_count"] += 1
-                self.poll_stats["last_error"] = str(err)
-                if attempt == max_attempts:
-                    raise UpdateFailed(f"Error updating data after {attempt} attempts: {err}") from err
-                import asyncio
-                await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+            decoded: dict[str, DecodedValue] = {**(self.data or {})}
 
-    def _group_registers_for_batch(self, register_defs):
-        """Group register definitions into contiguous address batches."""
-        sorted_regs = sorted(register_defs, key=lambda r: r.address)
-        batches = []
-        batch = []
-        last_addr = None
-        for reg in sorted_regs:
-            if not batch:
-                batch = [reg]
-                last_addr = reg.address
-                continue
-            expected_next = last_addr + reg.length // 2
-            if reg.address == expected_next:
-                batch.append(reg)
-                last_addr = reg.address
-            else:
-                start = batch[0].address
-                count = sum(r.length // 2 for r in batch)
-                batches.append((start, count, list(batch)))
-                batch = [reg]
-                last_addr = reg.address
-        if batch:
-            start = batch[0].address
-            count = sum(r.length // 2 for r in batch)
-            batches.append((start, count, list(batch)))
-        return batches
-
-    def _parse_and_validate_registers(self, raw_values, reg_defs):
-        """Parse and validate raw register values with datatype and size support."""
-        import struct
-        parsed = {}
-        if raw_values is None:
-            for reg in reg_defs:
-                parsed[reg.name] = None
-            return parsed
-        idx = 0
-        for reg in reg_defs:
-            try:
-                reg_words = reg.length // 2
-                if idx + reg_words > len(raw_values):
-                    parsed[reg.name] = None
-                    idx += reg_words
-                    continue
-                regs = raw_values[idx:idx + reg_words]
-                _LOGGER.debug(
-                    "Register debug: name=%s, address=0x%04X, raw_regs=%s, reg_words=%d",
-                    reg.name, reg.address, regs, reg_words
-                )
-                if reg.data_type == "Float" and reg_words == 2:
-                    # SDM meters require swapped word order for float32
-                    swapped_val = struct.unpack(">f", struct.pack(">HH", regs[1], regs[0]))[0]
-                    normal_val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
+            for batch in _build_batches(specs_to_read):
+                raw = await self._client.read_input_registers(batch.start, batch.length)
+                if self.debug:
                     _LOGGER.debug(
-                        "Register debug: name=%s, address=0x%04X, raw_regs=%s, swapped_regs=%s, float(swapped)=%s, float(normal)=%s",
-                        reg.name, reg.address, regs, [regs[1], regs[0]], swapped_val, normal_val
+                        "Batch read start=%s len=%s specs=%s", batch.start, batch.length, [s.key for s in batch.specs]
                     )
-                elif reg.data_type == "UInt32" and reg_words == 2:
-                    val = (regs[0] << 16) | regs[1]
-                elif reg.data_type == "HEX":
-                    if reg_words == 2:
-                        val = (regs[0] << 16) | regs[1]
-                    else:
-                        val = regs[0]
-                else:
-                    val = regs[0]
-                value = reg.apply_scaling(val)
-                parsed[reg.name] = value
-                idx += reg_words
-            except Exception:
-                parsed[reg.name] = None
-                idx += reg.length // 2
-        return parsed
+                # Slice out per spec
+                for spec in batch.specs:
+                    offset = spec.address - batch.start
+                    regs = raw.registers[offset: offset + spec.length]
+                    value = _decode(spec, regs)
+                    decoded[spec.key] = DecodedValue(key=spec.key, value=value, updated=datetime.utcnow())
+                    if self.debug:
+                        _LOGGER.debug("Decoded %s -> %s", spec.key, value)
 
-class SDMMultiTierCoordinator:
-    """Coordinator managing fast/normal/slow polling tiers."""
+            self._failure_count = 0
+            return decoded
+        except Exception as exc:  # broad to ensure coordinator handles availability
+            self._failure_count += 1
+            raise UpdateFailed(str(exc)) from exc
 
-    def __init__(self, hass: HomeAssistant, device, name_prefix: str = ""):
-        from datetime import timedelta
-
-        self.device = device
-        self.hass = hass
-
-        # Define register groups by polling tier
-        self.tiers = {
-            "fast": {
-                "interval": timedelta(seconds=5),
-                "registers": [r for r in getattr(device, "register_map", []) if getattr(r, "polling", "normal") == "fast"],
-            },
-            "normal": {
-                "interval": timedelta(seconds=30),
-                "registers": [r for r in getattr(device, "register_map", []) if getattr(r, "polling", "normal") == "normal"],
-            },
-            "slow": {
-                "interval": timedelta(seconds=300),
-                "registers": [r for r in getattr(device, "register_map", []) if getattr(r, "polling", "normal") == "slow"],
-            },
-        }
-
-        self.coordinators = {}
-        for tier, cfg in self.tiers.items():
-            self.coordinators[tier] = SDMDataUpdateCoordinator(
-                hass=hass,
-                name=f"{name_prefix}{tier.capitalize()} Tier",
-                update_interval=cfg["interval"],
-                device=SDMTierDeviceProxy(device, cfg["registers"]),
-            )
-
-    async def async_refresh_all(self):
-        """Refresh all tiers."""
-        _LOGGER.debug("SDMMultiTierCoordinator: Starting async_refresh_all for all tiers")
-        await self.coordinators["fast"].async_refresh()
-        await self.coordinators["normal"].async_refresh()
-        await self.coordinators["slow"].async_refresh()
-
-    def get_data(self, tier: str):
-        """Get latest data for a tier."""
-        return self.coordinators[tier].data if tier in self.coordinators else {}
-
-class SDMTierDeviceProxy:
-    """Proxy device exposing only a subset of registers for a polling tier."""
-
-    def __init__(self, device, registers):
-        self._device = device
-        self.register_map = registers
-
-    def __getattr__(self, attr):
-        return getattr(self._device, attr)
-
-    @property
-    def device_info(self):
-        """Return device info for Home Assistant device registry."""
-        return self.device.device_info() if self.device else None
-
-    async def async_read_registers(self, address: int, count: int = 1):
-        """Delegate register reads to the underlying device (ensures lock is used)."""
-        _LOGGER.debug(
-            "SDMTierDeviceProxy: async_read_registers called for address 0x%04X, count %d, device=%s",
-            address, count, repr(self._device)
-        )
-        return await self._device.async_read_registers(address, count)
+    async def async_close(self) -> None:
+        await self._client.close()
 
 
-    async def _async_update_data(self) -> Any:
-        """Fetch data from the device with retry logic and track polling statistics."""
-        import time
-        if not hasattr(self, "poll_stats"):
-            self.poll_stats = {
-                "success_count": 0,
-                "failure_count": 0,
-                "last_update": None,
-                "last_error": None,
-                "avg_duration": 0.0,
-                "total_duration": 0.0,
-                "total_polls": 0,
-            }
-        max_attempts = 3
-        delay = 1
-        for attempt in range(1, max_attempts + 1):
-            start = time.monotonic()
-            try:
-                registers = getattr(self.device, "register_map", None)
-                if registers is not None:
-                    batches = self._group_registers_for_batch(registers)
-                    results = {}
-                    for start_addr, count, reg_defs in batches:
-                        raw = await self.device.async_read_registers(start_addr, count)
-                        _LOGGER.debug(
-                            "SDMTierDeviceProxy: async_read_registers called for address 0x%04X, count %d, raw=%s",
-                            start_addr, count, raw)
-                        parsed = self._parse_and_validate_registers(raw, reg_defs)
-                        results.update(parsed)
-                    duration = time.monotonic() - start
-                    self.poll_stats["success_count"] += 1
-                    self.poll_stats["last_update"] = time.time()
-                    self.poll_stats["last_error"] = None
-                    self.poll_stats["total_duration"] += duration
-                    self.poll_stats["total_polls"] += 1
-                    self.poll_stats["avg_duration"] = (
-                        self.poll_stats["total_duration"] / self.poll_stats["total_polls"]
-                    )
-                    return results
-                data = await self.device.async_read_registers(0x0000, 2)
-                duration = time.monotonic() - start
-                self.poll_stats["success_count"] += 1
-                self.poll_stats["last_update"] = time.time()
-                self.poll_stats["last_error"] = None
-                self.poll_stats["total_duration"] += duration
-                self.poll_stats["total_polls"] += 1
-                self.poll_stats["avg_duration"] = (
-                    self.poll_stats["total_duration"] / self.poll_stats["total_polls"]
-                )
-                return data
-            except Exception as err:
-                await self._async_close_client()
-                self.poll_stats["failure_count"] += 1
-                self.poll_stats["last_error"] = str(err)
-                if attempt == max_attempts:
-                    raise UpdateFailed(f"Error updating data after {attempt} attempts: {err}") from err
-                import asyncio
-                await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
+    if spec.data_type == "float32":
+        if len(registers) < 2:
+            return None
+        combined = (registers[0] << 16) | registers[1]
+        return struct.unpack(">f", combined.to_bytes(4, byteorder="big"))[0]
+    return None
 
-    def _group_registers_for_batch(self, register_defs):
-        """Group register definitions into contiguous address batches."""
-        sorted_regs = sorted(register_defs, key=lambda r: r.address)
-        batches = []
-        batch = []
-        last_addr = None
-        for reg in sorted_regs:
-            if not batch:
-                batch = [reg]
-                last_addr = reg.address
-                continue
-            expected_next = last_addr + reg.length // 2
-            if reg.address == expected_next:
-                batch.append(reg)
-                last_addr = reg.address
-            else:
-                start = batch[0].address
-                count = sum(r.length // 2 for r in batch)
-                batches.append((start, count, list(batch)))
-                batch = [reg]
-                last_addr = reg.address
-        if batch:
-            start = batch[0].address
-            count = sum(r.length // 2 for r in batch)
-            batches.append((start, count, list(batch)))
-        return batches
 
-    def _parse_and_validate_registers(self, raw_values, reg_defs):
-        """Parse and validate raw register values with datatype and size support."""
-        import struct
-        parsed = {}
-        if raw_values is None:
-            for reg in reg_defs:
-                parsed[reg.name] = None
-            return parsed
-        idx = 0
-        for reg in reg_defs:
-            try:
-                reg_words = reg.length // 2
-                if idx + reg_words > len(raw_values):
-                    parsed[reg.name] = None
-                    idx += reg_words
-                    continue
-                regs = raw_values[idx:idx + reg_words]
-                if reg.data_type == "Float" and reg_words == 2:
-                    val = struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0]
-                elif reg.data_type == "UInt32" and reg_words == 2:
-                    val = (regs[0] << 16) | regs[1]
-                elif reg.data_type == "HEX":
-                    if reg_words == 2:
-                        val = (regs[0] << 16) | regs[1]
-                    else:
-                        val = regs[0]
-                else:
-                    val = regs[0]
-                value = reg.apply_scaling(val)
-                parsed[reg.name] = value
-                idx += reg_words
-            except Exception:
-                parsed[reg.name] = None
-                idx += reg.length // 2
-        return parsed
+def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
+    # Sort by address for grouping
+    ordered = sorted(specs, key=lambda s: s.address)
+    batches: list[_Batch] = []
+    current: _Batch | None = None
+    for spec in ordered:
+        if current is None:
+            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+            continue
+        end = current.start + current.length
+        gap = spec.address - end
+        if gap <= 4:  # allow small gaps (reads extra registers) to merge
+            new_end = spec.address + spec.length
+            current.length = new_end - current.start
+            current.specs.append(spec)
+        else:
+            batches.append(current)
+            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+    if current:
+        batches.append(current)
+    return batches
