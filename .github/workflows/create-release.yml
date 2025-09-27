@@ -1,0 +1,120 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag version (e.g., v0.1.0)'
+        required: true
+        type: string
+      branch:
+        description: 'Source branch to create release from'
+        required: true
+        default: 'main'
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+      
+      - name: Validate tag format
+        run: |
+          if [[ ! "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "Error: Tag must follow semver format (e.g., v0.1.0, v1.2.3-beta)"
+            exit 1
+          fi
+      
+      - name: Check if tag already exists
+        run: |
+          if git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
+            echo "Error: Tag ${{ inputs.tag }} already exists"
+            exit 1
+          fi
+      
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ inputs.tag }}" -m "Release ${{ inputs.tag }}"
+          git push origin "${{ inputs.tag }}"
+      
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          # Extract version without 'v' prefix for CHANGELOG lookup
+          VERSION=$(echo "${{ inputs.tag }}" | sed 's/^v//')
+          
+          # Try to extract release notes from CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            # Look for section matching the version
+            NOTES=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
+            if [ -n "$NOTES" ]; then
+              # Save to file to handle multiline content
+              echo "$NOTES" > release_notes.md
+              echo "found_changelog=true" >> $GITHUB_OUTPUT
+            else
+              echo "found_changelog=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "found_changelog=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate default release notes
+        if: steps.changelog.outputs.found_changelog == 'false'
+        run: |
+          cat > release_notes.md << EOF
+          ## Release ${{ inputs.tag }}
+          
+          Released from branch \`${{ inputs.branch }}\` on $(date -u +"%Y-%m-%d %H:%M UTC")
+          
+          ### Changes
+          - See commit history for detailed changes since last release
+          
+          ### Installation
+          - Manual: Copy \`custom_components/eastron_sdm\` to your Home Assistant config
+          - HACS: Add this repository as a custom integration
+          
+          ### Requirements
+          - Home Assistant 2024.6.0+
+          - pymodbus >= 3.6.0
+          EOF
+      
+      - name: Create GitHub Release
+        uses: ncipollo/create-release@v1
+        with:
+          tag: ${{ inputs.tag }}
+          name: Release ${{ inputs.tag }}
+          bodyFile: release_notes.md
+          draft: false
+          prerelease: ${{ inputs.prerelease }}
+          generateReleaseNotes: true  # Adds auto-generated notes as supplement
+          makeLatest: ${{ !inputs.prerelease }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f release_notes.md
+      
+      - name: Summary
+        run: |
+          echo "✅ Successfully created release ${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "📁 Source branch: ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ Tag: ${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Pre-release: ${{ inputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag }})" >> $GITHUB_STEP_SUMMARY
