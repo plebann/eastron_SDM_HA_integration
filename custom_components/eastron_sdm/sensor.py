@@ -65,6 +65,10 @@ class SdmSensor(CoordinatorEntity[SdmCoordinator], SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         else:
             self._attr_state_class = None
+        # Provide display precision hint if defined
+        if getattr(spec, "precision", None) is not None:
+            # Home Assistant uses suggested_display_precision to format UI
+            self._attr_suggested_display_precision = spec.precision  # type: ignore[attr-defined]
         # Home Assistant built-ins for energy device class constant above is maintained for compatibility
 
     @staticmethod
@@ -87,7 +91,16 @@ class SdmSensor(CoordinatorEntity[SdmCoordinator], SensorEntity):
 
     @property
     def native_value(self) -> float | int | None:  # type: ignore[override]
-        return self._current_value()
+        val = self._current_value()
+        if val is None:
+            return None
+        precision = getattr(self._spec, "precision", None)
+        if precision is not None and isinstance(val, (int, float)):
+            try:
+                return round(float(val), precision)
+            except Exception:  # pragma: no cover - defensive
+                return val
+        return val
 
     @property
     def device_info(self) -> dict[str, Any]:  # type: ignore[override]
