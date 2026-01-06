@@ -35,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await _sync_entity_registry_enabled_state(hass, entry)
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     return True
 
@@ -51,6 +52,7 @@ async def _sync_entity_registry_enabled_state(hass: HomeAssistant, entry: Config
     data = {**entry.data, **entry.options}
 
     category_flags = {
+        "basic": True,
         "advanced": data.get(CONF_ENABLE_ADVANCED, False),
         "diagnostic": data.get(CONF_ENABLE_DIAGNOSTIC, False),
         "two-way": data.get(CONF_ENABLE_TWO_WAY, False),
@@ -58,7 +60,7 @@ async def _sync_entity_registry_enabled_state(hass: HomeAssistant, entry: Config
     }
 
     specs = get_register_specs()
-    entries = registry.async_entries_for_config_entry(entry.entry_id)
+    entries = er.async_entries_for_config_entry(registry, entry.entry_id)
 
     for reg_entry in entries:
         spec = next((s for s in specs if reg_entry.unique_id.endswith(f"_{s.key}")), None)
