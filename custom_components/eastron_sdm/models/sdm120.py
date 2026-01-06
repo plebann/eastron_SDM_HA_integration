@@ -18,6 +18,11 @@ class RegisterSpec:
     tier: str  # 'fast' | 'normal' | 'slow'
     enabled_default: bool
     precision: int | None = None  # optional display precision
+    control: str | None = None  # 'number' | 'select'
+    options: tuple[int, ...] | None = None  # for select controls
+    min_value: float | None = None  # for number controls
+    max_value: float | None = None  # for number controls
+    step: float | None = None  # for number controls
 
 BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     # FAST tier (every base cycle)
@@ -70,20 +75,24 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 
     # Config (disabled by default)
     RegisterSpec(
-        key="network_parity_stop", address=18, length=2, function="holding", data_type="uint16", unit=None,
+        key="network_parity_stop", address=18, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+        control="select", options=(0, 1, 2, 3),
     ),
     RegisterSpec(
-        key="meter_id", address=20, length=2, function="holding", data_type="uint16", unit=None,
+        key="meter_id", address=20, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+        control="number", min_value=1, max_value=247, step=1,
     ),
     RegisterSpec(
-        key="baud_rate", address=28, length=2, function="holding", data_type="uint16", unit=None,
+        key="baud_rate", address=28, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+        control="select", options=(0, 1, 2, 5),
     ),
     RegisterSpec(
         key="time_of_scroll_display", address=63744, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+        control="number", min_value=0, max_value=30, step=1,
     ),
 
     # Diagnostic identity (disabled by default) — holding registers per vendor map
@@ -108,25 +117,6 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 ]
 
 
-def get_register_specs(
-    *,
-    enable_advanced: bool,
-    enable_diagnostic: bool,
-    enable_two_way: bool,
-    enable_config: bool,
-) -> list[RegisterSpec]:
-    """Return filtered register specs based on option flags."""
-    category_flags = {
-        "advanced": enable_advanced,
-        "diagnostic": enable_diagnostic,
-        "two-way": enable_two_way,
-        "config": enable_config,
-    }
-
-    specs: list[RegisterSpec] = []
-    for spec in BASE_SDM120_SPECS:
-        flag = category_flags.get(spec.category)
-        if flag is False and not spec.enabled_default:
-            continue
-        specs.append(spec)
-    return specs
+def get_register_specs() -> list[RegisterSpec]:
+    """Return all register specs; enabled_default drives registry enabled state."""
+    return list(BASE_SDM120_SPECS)

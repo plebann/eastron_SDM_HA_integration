@@ -17,14 +17,12 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: SdmCoordinator = data["coordinator"]
-    specs = get_register_specs(
-        enable_advanced=coordinator.enable_advanced,
-        enable_diagnostic=coordinator.enable_diagnostic,
-        enable_two_way=coordinator.enable_two_way,
-        enable_config=coordinator.enable_config,
-    )
-
-    entities = [SdmRegisterSensor(coordinator, entry, spec) for spec in specs]
+    specs = get_register_specs()
+    entities = [
+        SdmRegisterSensor(coordinator, entry, spec)
+        for spec in specs
+        if spec.category != "config"
+    ]
 
     async_add_entities(entities)
     _LOGGER.debug("Added %d SDM sensors for entry %s", len(entities), entry.entry_id)

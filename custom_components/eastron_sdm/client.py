@@ -82,6 +82,12 @@ class SdmModbusClient:
     async def read_holding_registers(self, address: int, count: int) -> ReadResult:
         return await self._read_registers("read_holding_registers", address, count)
 
+    async def write_holding_register(self, address: int, value: int) -> None:
+        await self._write_registers("write_register", address, [value])
+
+    async def write_holding_registers(self, address: int, values: list[int]) -> None:
+        await self._write_registers("write_registers", address, values)
+
     async def _read_registers(self, method_name: str, address: int, count: int) -> ReadResult:
         async with self._io_lock:
             await self.ensure_connected()
@@ -109,3 +115,38 @@ class SdmModbusClient:
             if rr.isError():  # type: ignore[attr-defined]
                 raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
             return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
+
+    async def _write_registers(self, method_name: str, address: int, values: list[int]) -> None:
+        if not values:
+            raise ValueError("No values provided for write")
+        async with self._io_lock:
+            await self.ensure_connected()
+            assert self._client is not None
+            method = getattr(self._client, method_name)
+            last_exc: Exception | None = None
+            attempts: list[tuple[str, dict[str, Any]]] = [
+                ("unit", {"unit": self._unit_id}),
+                ("slave", {"slave": self._unit_id}),
+                ("positional", {}),
+            ]
+            for mode, kw in attempts:
+                try:
+                    if method_name == "write_register":
+                        if mode == "positional":
+                            rr = await method(address=address, value=values[0])  # type: ignore[assignment]
+                        else:
+                            rr = await method(address=address, value=values[0], **kw)  # type: ignore[assignment]
+                    else:
+                        if mode == "positional":
+                            rr = await method(address=address, values=values)  # type: ignore[assignment]
+                        else:
+                            rr = await method(address=address, values=values, **kw)  # type: ignore[assignment]
+                    break
+                except TypeError as exc:
+                    last_exc = exc
+                    continue
+            else:  # no break
+                if last_exc:
+                    raise last_exc
+            if rr.isError():  # type: ignore[attr-defined]
+                raise ModbusIOException(f"Modbus write error @ {address} len {len(values)}: {rr}")

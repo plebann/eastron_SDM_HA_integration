@@ -66,12 +66,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._client = SdmModbusClient(self.host, self.port, self.unit_id)
         self._cycle = 0
         self._failure_count = 0
-        self._specs = get_register_specs(
-            enable_advanced=self.enable_advanced,
-            enable_diagnostic=self.enable_diagnostic,
-            enable_two_way=self.enable_two_way,
-            enable_config=self.enable_config,
-        )
+        self._specs = get_register_specs()
         self._fast = [s for s in self._specs if s.tier == "fast"]
         self._normal = [s for s in self._specs if s.tier == "normal"]
         self._slow = [s for s in self._specs if s.tier == "slow"]
@@ -125,6 +120,16 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
 
     async def async_close(self) -> None:
         await self._client.close()
+
+    async def async_write_register(self, spec: RegisterSpec, value: int) -> None:
+        """Write a holding register value and trigger refresh."""
+        if spec.function != "holding":
+            raise ValueError(f"Write attempted on non-holding register {spec.key}")
+        if spec.length > 1:
+            await self._client.write_holding_registers(spec.address, [int(value)] * spec.length)
+        else:
+            await self._client.write_holding_register(spec.address, int(value))
+        await self.async_request_refresh()
 
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""

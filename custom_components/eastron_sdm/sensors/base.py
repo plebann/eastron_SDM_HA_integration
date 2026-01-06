@@ -35,6 +35,7 @@ class SdmBaseSensor(SdmBaseEntity, SensorEntity):
         unique_id = f"eastron_sdm_{coordinator.host}_{coordinator.unit_id}_{spec.key}"
         super().__init__(coordinator, entry, unique_id=unique_id, translation_key=spec.key)
         self._spec = spec
+        self._attr_entity_registry_enabled_default = spec.enabled_default
 
         self._attr_device_class = _DEVICE_CLASS_MAP.get(spec.device_class)
         self._attr_state_class = _STATE_CLASS_MAP.get(spec.state_class)
