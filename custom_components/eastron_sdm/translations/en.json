@@ -21,40 +21,6 @@
     "error": {
       "min_value": "Value below allowed minimum",
       "max_value": "Value above allowed maximum",
-      "entity": {
-        "sensor": {
-          "voltage": {
-            "name": "Voltage"
-          },
-          "current": {
-            "name": "Current"
-          },
-          "active_power": {
-            "name": "Active Power"
-          },
-          "frequency": {
-            "name": "Frequency"
-          },
-          "import_active_energy": {
-            "name": "Import Active Energy"
-          },
-          "total_active_energy": {
-            "name": "Total Active Energy"
-          },
-          "apparent_power": {
-            "name": "Apparent Power"
-          },
-          "reactive_power": {
-            "name": "Reactive Power"
-          },
-          "power_factor": {
-            "name": "Power Factor"
-          },
-          "total_system_power_demand": {
-            "name": "Total System Power Demand"
-          }
-        }
-      },
       "invalid": "Invalid value"
     }
   },
@@ -70,6 +36,40 @@
           "slow_divisor": "Slow tier divisor",
           "debug": "Enable debug logging"
         }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "voltage": {
+        "name": "Voltage"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "active_power": {
+        "name": "Active Power"
+      },
+      "frequency": {
+        "name": "Frequency"
+      },
+      "import_active_energy": {
+        "name": "Import Active Energy"
+      },
+      "total_active_energy": {
+        "name": "Total Active Energy"
+      },
+      "apparent_power": {
+        "name": "Apparent Power"
+      },
+      "reactive_power": {
+        "name": "Reactive Power"
+      },
+      "power_factor": {
+        "name": "Power Factor"
+      },
+      "total_system_power_demand": {
+        "name": "Total System Power Demand"
       }
     }
   }

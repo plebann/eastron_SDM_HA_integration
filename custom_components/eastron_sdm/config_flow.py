@@ -45,6 +45,10 @@ DATA_SCHEMA = vol.Schema(
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc]
     VERSION = 1
 
+    @staticmethod
+    async def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # pragma: no cover - HA hook
+        return OptionsFlowHandler(config_entry)
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -107,5 +111,3 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
-async def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # pragma: no cover - HA hook
-    return OptionsFlowHandler(config_entry)
