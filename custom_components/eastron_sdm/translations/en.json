@@ -78,6 +78,18 @@
       "total_system_power_demand": {
         "name": "Total System Power Demand"
       },
+      "network_parity_stop": {
+        "name": "Network Parity / Stop"
+      },
+      "meter_id": {
+        "name": "Meter ID"
+      },
+      "baud_rate": {
+        "name": "Baud Rate"
+      },
+      "time_of_scroll_display": {
+        "name": "Scroll Display Time"
+      },
       "serial_number": {
         "name": "Serial Number"
       },

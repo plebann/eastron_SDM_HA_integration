@@ -82,7 +82,7 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
     ),
     RegisterSpec(
-        key="time_of_scroll_display", address=64384, length=1, function="holding", data_type="uint16", unit=None,
+        key="time_of_scroll_display", address=63744, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
     ),
 
