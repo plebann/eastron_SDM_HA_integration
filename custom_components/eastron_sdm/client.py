@@ -40,28 +40,29 @@ class SdmModbusClient:
                     await self._client.close()
             # Attempt to import an RTU framer for better transaction id alignment when the
             # device expects RTU style encapsulation over TCP (common with SDM meters via gateways).
-            framer = None
-            with suppress(Exception):  # optional
-                # pymodbus relocated framers across versions; try a few paths
-                try:
-                    from pymodbus.framer import ModbusRtuFramer as _Framer  # type: ignore
-                except Exception:  # pragma: no cover
-                    from pymodbus.transaction import ModbusRtuFramer as _Framer  # type: ignore
-                framer = _Framer
+            framer: Any | None = None
+            with suppress(Exception):
+                from pymodbus.framer import FramerType  # type: ignore
 
+                framer = FramerType.RTU
+
+            if framer is None:  # fallback for older pymodbus layouts
+                with suppress(Exception):  # optional
+                    try:
+                        from pymodbus.framer.rtu_framer import ModbusRtuFramer as _Framer  # type: ignore
+                    except Exception:  # pragma: no cover
+                        from pymodbus.transaction import ModbusRtuFramer as _Framer  # type: ignore
+                    framer = _Framer
+
+            kwargs: dict[str, Any] = {
+                "host": self._host,
+                "port": self._port,
+                "timeout": self._timeout,
+            }
             if framer:
-                self._client = AsyncModbusTcpClient(
-                    self._host,
-                    port=self._port,
-                    timeout=self._timeout,
-                    framer=framer,
-                )
-            else:
-                self._client = AsyncModbusTcpClient(
-                    self._host,
-                    port=self._port,
-                    timeout=self._timeout,
-                )
+                kwargs["framer"] = framer
+
+            self._client = AsyncModbusTcpClient(**kwargs)
             await self._client.connect()
             self._connected = bool(self._client.connected)  # type: ignore[attr-defined]
             if not self._connected:
@@ -85,19 +86,27 @@ class SdmModbusClient:
             ("slave", {"slave": self._unit_id}),
             ("positional", {}),  # fallback: try without kw (some variants accept address,count,unit_id)
         ]
-        for mode, kw in attempts:
-            try:
-                if mode == "positional":
-                    rr = await method(address=address, count=count)  # type: ignore[assignment]
-                else:
-                    rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
-                break
-            except TypeError as exc:  # wrong signature
-                last_exc = exc
-                continue
-        else:  # no break
-            if last_exc:
-                raise last_exc
+        try:
+            for mode, kw in attempts:
+                try:
+                    if mode == "positional":
+                        rr = await method(address=address, count=count)  # type: ignore[assignment]
+                    else:
+                        rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
+                    break
+                except TypeError as exc:  # wrong signature
+                    last_exc = exc
+                    continue
+            else:  # no break
+                if last_exc:
+                    raise last_exc
+        except Exception:
+            # Drop the connection so the next attempt starts from a clean state.
+            self._connected = False
+            with suppress(Exception):
+                await self._client.close()
+            raise
+
         if rr.isError():  # type: ignore[attr-defined]
             raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
         # rr.registers is a list[int]
