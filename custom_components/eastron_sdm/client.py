@@ -81,11 +81,15 @@ class SdmModbusClient:
         async with self._io_lock:
             await self.ensure_connected()
             assert self._client is not None
-            # Clear any partial frames to avoid "extra data" errors on the next request.
+            # Clear any partial frames and buffered bytes to avoid "extra data" on the next request.
             with suppress(Exception):
-                framer = getattr(getattr(self._client, "protocol", None), "framer", None)
-                if framer:
-                    framer.resetFrame()
+                protocol = getattr(self._client, "protocol", None)
+                if protocol:
+                    self._flush_recv_buffers(protocol)
+                    framer = getattr(protocol, "framer", None)
+                    if framer:
+                        self._flush_recv_buffers(framer)
+                        framer.resetFrame()
 
             method = self._client.read_input_registers
             last_exc: Exception | None = None
@@ -119,3 +123,17 @@ class SdmModbusClient:
                 raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
             # rr.registers is a list[int]
             return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
+
+    @staticmethod
+    def _flush_recv_buffers(obj: Any) -> None:
+        for name in ("_recv_buffer", "recv_buffer", "_buffer", "buffer"):
+            buf = getattr(obj, name, None)
+            if buf is None:
+                continue
+            if hasattr(buf, "clear"):
+                buf.clear()
+            else:
+                try:
+                    setattr(obj, name, type(buf)())
+                except Exception:
+                    pass

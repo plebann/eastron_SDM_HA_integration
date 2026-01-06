@@ -155,7 +155,7 @@ def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
             continue
         end = current.start + current.length
         gap = spec.address - end
-        if gap <= 4:  # allow small gaps (reads extra registers) to merge
+        if gap <= 0:  # only merge contiguous blocks to reduce oversized/fragmented reads
             new_end = spec.address + spec.length
             current.length = new_end - current.start
             current.specs.append(spec)
