@@ -77,9 +77,9 @@ async def _sync_entity_registry_enabled_state(hass: HomeAssistant, entry: Config
             continue
 
         if desired_enabled and reg_entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
-            await registry.async_update_entity(reg_entry.entity_id, disabled_by=None)
+            registry.async_update_entity(reg_entry.entity_id, disabled_by=None)
         elif not desired_enabled and reg_entry.disabled_by is None:
-            await registry.async_update_entity(reg_entry.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION)
+            registry.async_update_entity(reg_entry.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
