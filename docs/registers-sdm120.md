@@ -49,8 +49,6 @@ This document provides a categorized inventory of all SDM120 Modbus registers fo
 **HA Entity Type:** Input registers map to `sensor`. Writable holding/config registers map to `number`, `select`, or `button` as appropriate.
 **Special Handling:** Enum/bitfield mapping required for some config registers (see "Special Handling" column).
 
-**Note:** On meters configured for import-only operation, `Import active energy` (0x48) and `Total active energy` (0x156) can legitimately report identical values. This is expected behavior and does not indicate a decoding issue.
-
 *This table can be expanded as more registers are mapped or as needed for the integration.*
 
 **Validation:** This register map is based on official SDM120 documentation. Validate against actual device responses during integration testing.

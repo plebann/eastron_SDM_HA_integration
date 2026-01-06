@@ -46,7 +46,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc
     VERSION = 1
 
     @staticmethod
-    async def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # pragma: no cover - HA hook
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # pragma: no cover - HA hook
         return OptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):

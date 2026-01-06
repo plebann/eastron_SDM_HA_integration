@@ -1,11 +1,11 @@
 {
   "domain": "eastron_sdm",
   "name": "Eastron SDM Meter",
-  "version": "0.0.55",
+  "version": "0.0.65",
   "documentation": "https://github.com/plebann/eastron_SDM_HA_integration",
   "issue_tracker": "https://github.com/plebann/eastron_SDM_HA_integration/issues",
   "requirements": [
-    "pymodbus>=3.6.0"
+    "pymodbus>=3.11.2"
   ],
   "codeowners": ["@plebann"],
   "config_flow": true,
