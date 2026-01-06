@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.framer import ModbusRtuFramer
 from pymodbus.exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,12 +38,30 @@ class SdmModbusClient:
             if self._client:
                 with suppress(Exception):
                     await self._client.close()
-            self._client = AsyncModbusTcpClient(
-                self._host,
-                port=self._port,
-                timeout=self._timeout,
-                framer=ModbusRtuFramer,
-            )
+            # Attempt to import an RTU framer for better transaction id alignment when the
+            # device expects RTU style encapsulation over TCP (common with SDM meters via gateways).
+            framer = None
+            with suppress(Exception):  # optional
+                # pymodbus relocated framers across versions; try a few paths
+                try:
+                    from pymodbus.framer import ModbusRtuFramer as _Framer  # type: ignore
+                except Exception:  # pragma: no cover
+                    from pymodbus.transaction import ModbusRtuFramer as _Framer  # type: ignore
+                framer = _Framer
+
+            if framer:
+                self._client = AsyncModbusTcpClient(
+                    self._host,
+                    port=self._port,
+                    timeout=self._timeout,
+                    framer=framer,
+                )
+            else:
+                self._client = AsyncModbusTcpClient(
+                    self._host,
+                    port=self._port,
+                    timeout=self._timeout,
+                )
             await self._client.connect()
             self._connected = bool(self._client.connected)  # type: ignore[attr-defined]
             if not self._connected:
@@ -61,7 +78,26 @@ class SdmModbusClient:
     async def read_input_registers(self, address: int, count: int) -> ReadResult:
         await self.ensure_connected()
         assert self._client is not None
-        rr = await self._client.read_input_registers(address=address, count=count, unit=self._unit_id)
+        method = self._client.read_input_registers
+        last_exc: Exception | None = None
+        attempts: list[tuple[str, dict[str, Any]]] = [
+            ("unit", {"unit": self._unit_id}),
+            ("slave", {"slave": self._unit_id}),
+            ("positional", {}),  # fallback: try without kw (some variants accept address,count,unit_id)
+        ]
+        for mode, kw in attempts:
+            try:
+                if mode == "positional":
+                    rr = await method(address=address, count=count)  # type: ignore[assignment]
+                else:
+                    rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
+                break
+            except TypeError as exc:  # wrong signature
+                last_exc = exc
+                continue
+        else:  # no break
+            if last_exc:
+                raise last_exc
         if rr.isError():  # type: ignore[attr-defined]
             raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
         # rr.registers is a list[int]

@@ -92,18 +92,14 @@ jobs:
           - Home Assistant 2024.6.0+
           - pymodbus >= 3.6.0
           EOF
-      
+            
       - name: Create GitHub Release
-        uses: ncipollo/create-release@v1
-        with:
-          tag: ${{ inputs.tag }}
-          name: Release ${{ inputs.tag }}
-          bodyFile: release_notes.md
-          draft: false
-          prerelease: ${{ inputs.prerelease }}
-          generateReleaseNotes: true  # Adds auto-generated notes as supplement
-          makeLatest: ${{ !inputs.prerelease }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ inputs.tag }} \
+            --title "Release ${{ inputs.tag }}" \
+            --notes "Add your release notes here"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Cleanup
         if: always()

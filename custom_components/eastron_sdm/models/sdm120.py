@@ -17,12 +17,13 @@ class RegisterSpec:
     category: str  # 'basic' | 'advanced' | 'diagnostic'
     tier: str  # 'fast' | 'normal' | 'slow'
     enabled_default: bool
+    precision: int | None = None  # optional display precision
 
 BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     # FAST tier (every base cycle)
     RegisterSpec(
         key="voltage", address=0, length=2, function="input", data_type="float32", unit="V",
-        device_class="voltage", state_class="measurement", category="basic", tier="fast", enabled_default=True,
+        device_class="voltage", state_class="measurement", category="basic", tier="fast", enabled_default=True, precision=1,
     ),
     RegisterSpec(
         key="current", address=6, length=2, function="input", data_type="float32", unit="A",
@@ -36,7 +37,7 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     # NORMAL tier (every normal divisor cycles)
     RegisterSpec(
         key="frequency", address=70, length=2, function="input", data_type="float32", unit="Hz",
-        device_class="frequency", state_class="measurement", category="basic", tier="normal", enabled_default=True,
+        device_class="frequency", state_class="measurement", category="basic", tier="normal", enabled_default=True, precision=2,
     ),
 
     # SLOW tier (every slow divisor cycles)

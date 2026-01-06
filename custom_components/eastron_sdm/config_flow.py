@@ -23,6 +23,8 @@ from .const import (
     DEFAULT_NORMAL_DIVISOR,
     DEFAULT_SLOW_DIVISOR,
     MIN_SCAN_INTERVAL,
+    MAX_SCAN_INTERVAL,
+    MAX_DIVISOR,
 )
 
 DATA_SCHEMA = vol.Schema(
@@ -49,10 +51,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc
             # Basic validation
             if user_input[CONF_SCAN_INTERVAL] < MIN_SCAN_INTERVAL:
                 errors[CONF_SCAN_INTERVAL] = "min_value"
+            elif user_input[CONF_SCAN_INTERVAL] > MAX_SCAN_INTERVAL:
+                errors[CONF_SCAN_INTERVAL] = "max_value"
+
             if user_input[CONF_NORMAL_DIVISOR] < 2:
                 errors[CONF_NORMAL_DIVISOR] = "min_value"
+            elif user_input[CONF_NORMAL_DIVISOR] > MAX_DIVISOR:
+                errors[CONF_NORMAL_DIVISOR] = "max_value"
+
             if user_input[CONF_SLOW_DIVISOR] <= user_input[CONF_NORMAL_DIVISOR]:
                 errors[CONF_SLOW_DIVISOR] = "invalid"
+            elif user_input[CONF_SLOW_DIVISOR] > MAX_DIVISOR:
+                errors[CONF_SLOW_DIVISOR] = "max_value"
 
             if not errors:
                 title = f"{user_input[CONF_NAME]} (SDM120)"
@@ -69,12 +79,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             if user_input[CONF_SCAN_INTERVAL] < MIN_SCAN_INTERVAL:
                 errors[CONF_SCAN_INTERVAL] = "min_value"
+            elif user_input[CONF_SCAN_INTERVAL] > MAX_SCAN_INTERVAL:
+                errors[CONF_SCAN_INTERVAL] = "max_value"
+
             if user_input[CONF_NORMAL_DIVISOR] < 2:
                 errors[CONF_NORMAL_DIVISOR] = "min_value"
+            elif user_input[CONF_NORMAL_DIVISOR] > MAX_DIVISOR:
+                errors[CONF_NORMAL_DIVISOR] = "max_value"
+
             if user_input[CONF_SLOW_DIVISOR] <= user_input[CONF_NORMAL_DIVISOR]:
                 errors[CONF_SLOW_DIVISOR] = "invalid"
+            elif user_input[CONF_SLOW_DIVISOR] > MAX_DIVISOR:
+                errors[CONF_SLOW_DIVISOR] = "max_value"
             if not errors:
-                # Save options
                 return self.async_create_entry(title="Options", data=user_input)
 
         data = {**self._entry.data, **self._entry.options}
@@ -89,14 +106,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
-
-    async def async_create_entry(self, title: str, data: dict[str, Any]) -> dict[str, Any]:
-        """Handle the creation of an entry."""
-        # Update the config entry with the new options
-        self.hass.config_entries.async_update(self._entry.entry_id, options=data)
-        # Reload the entry to apply the new options
-        await self.hass.config_entries.async_reload(self._entry.entry_id)
-        return self.async_create_entry(title=title, data={**self._entry.data, **data})
 
 async def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # pragma: no cover - HA hook
     return OptionsFlowHandler(config_entry)

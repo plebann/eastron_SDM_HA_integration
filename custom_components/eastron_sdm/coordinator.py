@@ -76,6 +76,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         )
 
     async def _async_update_data(self) -> dict[str, DecodedValue]:  # type: ignore[override]
+        self._refresh_from_entry()
         try:
             specs_to_read = list(self._fast)
             if self._cycle % self.normal_divisor == 0:
@@ -105,10 +106,25 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             return decoded
         except Exception as exc:  # broad to ensure coordinator handles availability
             self._failure_count += 1
+            if self.data:
+                _LOGGER.warning("Using cached SDM data after failure #%s: %s", self._failure_count, exc)
+                return self.data
             raise UpdateFailed(str(exc)) from exc
 
     async def async_close(self) -> None:
         await self._client.close()
+
+    def _refresh_from_entry(self) -> None:
+        """Refresh coordinator settings from the latest entry data/options."""
+        data = {**self.entry.data, **self.entry.options}
+        self.enable_advanced = data.get(CONF_ENABLE_ADVANCED, self.enable_advanced)
+        self.enable_diagnostic = data.get(CONF_ENABLE_DIAGNOSTIC, self.enable_diagnostic)
+        self.normal_divisor = data.get(CONF_NORMAL_DIVISOR, self.normal_divisor)
+        self.slow_divisor = data.get(CONF_SLOW_DIVISOR, self.slow_divisor)
+        scan_interval = data.get(CONF_SCAN_INTERVAL, self.scan_interval)
+        if scan_interval != self.scan_interval:
+            self.scan_interval = scan_interval
+            self.update_interval = timedelta(seconds=self.scan_interval)
 
 
 def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
