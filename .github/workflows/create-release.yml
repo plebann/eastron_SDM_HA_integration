@@ -3,114 +3,141 @@ name: Create Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag version (e.g., v0.1.0)'
-        required: true
-        type: string
-      branch:
-        description: 'Source branch to create release from'
-        required: true
-        default: 'main'
-        type: string
-      prerelease:
-        description: 'Mark as pre-release'
+      version_increment:
+        description: 'Version increment type'
         required: false
-        default: false
-        type: boolean
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+run-name: Create Release (${{ github.event.inputs.version_increment || 'patch' }} increment)
 
 jobs:
-  create-release:
+  release:
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.next_version.outputs.new_version }}
     permissions:
       contents: write
     
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
           fetch-depth: 0
       
-      - name: Validate tag format
+      - name: Get latest tag
+        id: get_latest_tag
         run: |
-          if [[ ! "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-            echo "Error: Tag must follow semver format (e.g., v0.1.0, v1.2.3-beta)"
-            exit 1
-          fi
+          # Get the latest tag, or use 0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Latest tag: ${LATEST_TAG}"
       
-      - name: Check if tag already exists
+      - name: Calculate next version
+        id: next_version
         run: |
-          if git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
-            echo "Error: Tag ${{ inputs.tag }} already exists"
-            exit 1
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          # Remove 'v' prefix if present
+          VERSION=${LATEST_TAG#v}
+          
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # Increment based on input (default: patch)
+          INCREMENT="${{ github.event.inputs.version_increment || 'patch' }}"
+          
+          if [ "$INCREMENT" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$INCREMENT" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
           fi
+          
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "new_tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "Next version: ${NEW_VERSION}"
       
-      - name: Create and push tag
+      - name: Update workflow run name
+        run: |
+          echo "::notice title=Release Version::Creating release v${{ steps.next_version.outputs.new_version }}"
+          echo "RELEASE_VERSION=${{ steps.next_version.outputs.new_version }}" >> $GITHUB_ENV
+      
+      - name: Update manifest.json
+        run: |
+          NEW_VERSION="${{ steps.next_version.outputs.new_version }}"
+          sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" custom_components/eastron_sdm/manifest.json
+          echo "Updated manifest.json to version ${NEW_VERSION}"
+      
+      - name: Commit version update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ inputs.tag }}" -m "Release ${{ inputs.tag }}"
-          git push origin "${{ inputs.tag }}"
+          git add custom_components/eastron_sdm/manifest.json
+          git commit -m "Bump version to ${{ steps.next_version.outputs.new_version }}"
+          git push
       
-      - name: Extract release notes from CHANGELOG
-        id: changelog
+      - name: Create and push tag
         run: |
-          # Extract version without 'v' prefix for CHANGELOG lookup
-          VERSION=$(echo "${{ inputs.tag }}" | sed 's/^v//')
+          NEW_TAG="${{ steps.next_version.outputs.new_tag }}"
+          git tag -a "${NEW_TAG}" -m "Release ${NEW_TAG}"
+          git push origin "${NEW_TAG}"
+      
+      - name: Create release archive
+        run: |
+          cd custom_components
+          zip -r ../eastron_sdm.zip eastron_sdm/
+          cd ..
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          NEW_TAG="${{ steps.next_version.outputs.new_tag }}"
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
           
-          # Try to extract release notes from CHANGELOG.md
-          if [ -f CHANGELOG.md ]; then
-            # Look for section matching the version
-            NOTES=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
-            if [ -n "$NOTES" ]; then
-              # Save to file to handle multiline content
-              echo "$NOTES" > release_notes.md
-              echo "found_changelog=true" >> $GITHUB_OUTPUT
-            else
-              echo "found_changelog=false" >> $GITHUB_OUTPUT
-            fi
+          # Generate changelog
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            CHANGELOG="Initial release of Energy Optimizer integration for Home Assistant."
           else
-            echo "found_changelog=false" >> $GITHUB_OUTPUT
+            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="- Minor improvements and bug fixes"
+            fi
           fi
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
-      - name: Generate default release notes
-        if: steps.changelog.outputs.found_changelog == 'false'
-        run: |
-          cat > release_notes.md << EOF
-          ## Release ${{ inputs.tag }}
-          
-          Released from branch \`${{ inputs.branch }}\` on $(date -u +"%Y-%m-%d %H:%M UTC")
-          
-          ### Changes
-          - See commit history for detailed changes since last release
-          
-          ### Installation
-          - Manual: Copy \`custom_components/eastron_sdm\` to your Home Assistant config
-          - HACS: Add this repository as a custom integration
-          
-          ### Requirements
-          - Home Assistant 2024.6.0+
-          - pymodbus >= 3.6.0
-          EOF
-            
       - name: Create GitHub Release
-        run: |
-          gh release create ${{ inputs.tag }} \
-            --title "Release ${{ inputs.tag }}" \
-            --notes "Add your release notes here"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.next_version.outputs.new_tag }}
+          name: Release ${{ steps.next_version.outputs.new_version }}
+          body: |
+            ## Energy Optimizer ${{ steps.next_version.outputs.new_version }}
+            
+            ### Changes
+            ${{ steps.release_notes.outputs.changelog }}
+            
+            ### Installation
+            1. Download `eastron_sdm.zip`
+            2. Extract to your Home Assistant `custom_components` directory
+            3. Restart Home Assistant
+            
+            ### HACS Installation
+            This integration is available through HACS as a custom repository.
+          files: |
+            eastron_sdm.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Cleanup
-        if: always()
-        run: |
-          rm -f release_notes.md
-      
-      - name: Summary
-        run: |
-          echo "✅ Successfully created release ${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "📁 Source branch: ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "🏷️ Tag: ${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Pre-release: ${{ inputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag }})" >> $GITHUB_STEP_SUMMARY
