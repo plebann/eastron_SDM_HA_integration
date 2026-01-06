@@ -7,14 +7,16 @@
         "data": {
           "name": "Friendly Name",
           "host": "Host",
-            "port": "Port",
-            "unit_id": "Modbus Unit ID",
-            "scan_interval": "Base Scan Interval (s)",
-            "enable_advanced": "Enable advanced sensors",
-            "enable_diagnostic": "Enable diagnostic sensors",
-            "normal_divisor": "Normal tier divisor",
-            "slow_divisor": "Slow tier divisor",
-            "debug": "Enable debug logging"
+          "port": "Port",
+          "unit_id": "Modbus Unit ID",
+          "scan_interval": "Base Scan Interval (s)",
+          "enable_advanced": "Enable advanced sensors",
+          "enable_diagnostic": "Enable diagnostic sensors",
+          "enable_two_way": "Enable two-way energy sensors",
+          "enable_config": "Enable configuration registers",
+          "normal_divisor": "Normal tier divisor",
+          "slow_divisor": "Slow tier divisor",
+          "debug": "Enable debug logging"
         }
       }
     },
@@ -32,8 +34,6 @@
           "scan_interval": "Base Scan Interval (s)",
           "enable_advanced": "Enable advanced sensors",
           "enable_diagnostic": "Enable diagnostic sensors",
-          "enable_two_way": "Enable two-way energy sensors",
-          "enable_config": "Enable configuration registers",
           "enable_two_way": "Enable two-way energy sensors",
           "enable_config": "Enable configuration registers",
           "normal_divisor": "Normal tier divisor",
@@ -78,18 +78,6 @@
       "total_system_power_demand": {
         "name": "Total System Power Demand"
       },
-      "network_parity_stop": {
-        "name": "Network Parity / Stop"
-      },
-      "meter_id": {
-        "name": "Meter ID"
-      },
-      "baud_rate": {
-        "name": "Baud Rate"
-      },
-      "time_of_scroll_display": {
-        "name": "Scroll Display Time"
-      },
       "serial_number": {
         "name": "Serial Number"
       },
@@ -98,6 +86,22 @@
       },
       "software_version": {
         "name": "Software Version"
+      }
+    },
+    "number": {
+      "meter_id": {
+        "name": "Meter ID"
+      },
+      "time_of_scroll_display": {
+        "name": "Scroll Display Time"
+      }
+    },
+    "select": {
+      "network_parity_stop": {
+        "name": "Network Parity / Stop"
+      },
+      "baud_rate": {
+        "name": "Baud Rate"
       }
     }
   }

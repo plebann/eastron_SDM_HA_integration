@@ -12,6 +12,21 @@ from .coordinator import SdmCoordinator, DecodedValue
 from .models.sdm120 import RegisterSpec, get_register_specs
 from .shared_base import SdmBaseEntity
 
+_OPTION_LABELS = {
+    "baud_rate": {
+        0: "2400",
+        1: "4800",
+        2: "9600",
+        5: "1200",
+    },
+    "network_parity_stop": {
+        0: "1 stop / no parity",
+        1: "1 stop / even",
+        2: "1 stop / odd",
+        3: "2 stop / no parity",
+    },
+}
+
 
 class SdmConfigSelect(SdmBaseEntity, SelectEntity):
     """Writable select entity for SDM config registers."""
@@ -25,7 +40,18 @@ class SdmConfigSelect(SdmBaseEntity, SelectEntity):
         self._spec = spec
         self._attr_entity_registry_enabled_default = spec.enabled_default
         option_values = spec.options or ()
-        self._options = [str(v) for v in option_values]
+
+        label_map = _OPTION_LABELS.get(spec.key)
+        if label_map:
+            # Preserve original ordering from spec.options
+            self._options = [label_map.get(v, str(v)) for v in option_values]
+            self._value_from_label = {label_map.get(v, str(v)): v for v in option_values}
+            self._label_from_value = {v: label_map.get(v, str(v)) for v in option_values}
+        else:
+            self._options = [str(v) for v in option_values]
+            self._value_from_label = {str(v): v for v in option_values}
+            self._label_from_value = {v: str(v) for v in option_values}
+
         self._attr_options = self._options
 
     def _current_value(self) -> float | int | None:
@@ -40,13 +66,17 @@ class SdmConfigSelect(SdmBaseEntity, SelectEntity):
         val = self._current_value()
         if val is None:
             return None
-        as_str = str(int(val)) if isinstance(val, (int, float)) else str(val)
-        return as_str if as_str in self._options else None
+        if isinstance(val, float) and val.is_integer():
+            val = int(val)
+        return self._label_from_value.get(val)
 
     async def async_select_option(self, option: str) -> None:
         if option not in self._options:
             raise ValueError("Invalid option")
-        await self.coordinator.async_write_register(self._spec, int(option))
+        raw_value = self._value_from_label.get(option)
+        if raw_value is None:
+            raise ValueError("Invalid option")
+        await self.coordinator.async_write_register(self._spec, int(raw_value))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
