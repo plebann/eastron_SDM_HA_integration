@@ -42,6 +42,7 @@ class DecodedValue:
 class _Batch:
     start: int
     length: int
+    function: str
     specs: list[RegisterSpec]
 
 class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
@@ -88,7 +89,12 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             decoded: dict[str, DecodedValue] = {**(self.data or {})}
 
             for batch in _build_batches(specs_to_read):
-                raw = await self._client.read_input_registers(batch.start, batch.length)
+                if batch.function == "input":
+                    raw = await self._client.read_input_registers(batch.start, batch.length)
+                elif batch.function == "holding":
+                    raw = await self._client.read_holding_registers(batch.start, batch.length)
+                else:
+                    raise UpdateFailed(f"Unsupported function {batch.function}")
                 if self.debug:
                     _LOGGER.debug(
                         "Batch read start=%s len=%s specs=%s", batch.start, batch.length, [s.key for s in batch.specs]
@@ -145,23 +151,22 @@ def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
 
 
 def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
-    # Sort by address for grouping
-    ordered = sorted(specs, key=lambda s: s.address)
+    # Sort by function then address for grouping
+    ordered = sorted(specs, key=lambda s: (s.function, s.address))
     batches: list[_Batch] = []
     current: _Batch | None = None
     for spec in ordered:
         if current is None:
-            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+            current = _Batch(start=spec.address, length=spec.length, function=spec.function, specs=[spec])
             continue
         end = current.start + current.length
         gap = spec.address - end
-        if gap <= 0:  # only merge contiguous blocks to reduce oversized/fragmented reads
-            new_end = spec.address + spec.length
-            current.length = new_end - current.start
+        if spec.function == current.function and gap <= 0:  # only merge contiguous blocks per function
+            current.length = (spec.address + spec.length) - current.start
             current.specs.append(spec)
         else:
             batches.append(current)
-            current = _Batch(start=spec.address, length=spec.length, specs=[spec])
+            current = _Batch(start=spec.address, length=spec.length, function=spec.function, specs=[spec])
     if current:
         batches.append(current)
     return batches

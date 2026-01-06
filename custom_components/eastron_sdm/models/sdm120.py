@@ -14,7 +14,7 @@ class RegisterSpec:
     unit: str | None
     device_class: str | None
     state_class: str | None
-    category: str  # 'basic' | 'advanced' | 'diagnostic'
+    category: str  # 'basic' | 'advanced' | 'diagnostic' | 'config'
     tier: str  # 'fast' | 'normal' | 'slow'
     enabled_default: bool
     precision: int | None = None  # optional display precision
@@ -68,19 +68,37 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
         device_class="power_factor", state_class="measurement", category="advanced", tier="normal", enabled_default=False, precision=4,
     ),
 
-    # # Diagnostic identity (disabled by default)
-    # RegisterSpec(
-    #     key="serial_number", address=434512, length=2, function="input", data_type="uint32", unit=None,
-    #     device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
-    # ),
-    # RegisterSpec(
-    #     key="meter_code", address=434514, length=1, function="input", data_type="uint16", unit=None,
-    #     device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
-    # ),
-    # RegisterSpec(
-    #     key="software_version", address=434515, length=1, function="input", data_type="uint16", unit=None,
-    #     device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
-    # ),
+    # Config (disabled by default)
+    RegisterSpec(
+        key="network_parity_stop", address=18, length=2, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="meter_id", address=20, length=2, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="baud_rate", address=28, length=2, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="time_of_scroll_display", address=64384, length=1, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
+    ),
+
+    # Diagnostic identity (disabled by default) — holding registers per vendor map
+    RegisterSpec(
+        key="serial_number", address=64512, length=2, function="holding", data_type="uint32", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="meter_code", address=64514, length=1, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="software_version", address=64515, length=1, function="holding", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
 
     # Diagnostic (disabled by default)
     RegisterSpec(
