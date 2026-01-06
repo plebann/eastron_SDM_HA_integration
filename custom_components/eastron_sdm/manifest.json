@@ -5,7 +5,7 @@
   "documentation": "https://github.com/plebann/eastron_SDM_HA_integration",
   "issue_tracker": "https://github.com/plebann/eastron_SDM_HA_integration/issues",
   "requirements": [
-    "pymodbus>=3.11.4"
+    "pymodbus>=3.11.2"
   ],
   "codeowners": ["@plebann"],
   "config_flow": true,
