@@ -29,6 +29,10 @@ def test_register_specs():
     
     print("✅ Register specs working correctly")
 
+import pytest
+
+
+@pytest.mark.asyncio
 async def test_mock_modbus():
     """Test Modbus client logic with mock data."""
     from eastron_sdm.client import SdmModbusClient

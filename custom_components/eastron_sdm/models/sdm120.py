@@ -42,7 +42,15 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 
     # SLOW tier (every slow divisor cycles)
     RegisterSpec(
-        key="active_energy", address=342, length=2, function="input", data_type="float32", unit="kWh",
+        key="import_active_energy", address=72, length=2, function="input", data_type="float32", unit="kWh",
+        device_class="energy", state_class="total_increasing", category="basic", tier="slow", enabled_default=True,
+    ),
+    RegisterSpec(
+        key="export_active_energy", address=74, length=2, function="input", data_type="float32", unit="kWh",
+        device_class="energy", state_class="total_increasing", category="basic", tier="slow", enabled_default=True,
+    ),
+    RegisterSpec(
+        key="total_active_energy", address=342, length=2, function="input", data_type="float32", unit="kWh",
         device_class="energy", state_class="total_increasing", category="basic", tier="slow", enabled_default=True,
     ),
 
@@ -57,7 +65,27 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     ),
     RegisterSpec(
         key="power_factor", address=30, length=2, function="input", data_type="float32", unit=None,
-        device_class="power_factor", state_class="measurement", category="advanced", tier="normal", enabled_default=False,
+        device_class="power_factor", state_class="measurement", category="advanced", tier="normal", enabled_default=False, precision=4,
+    ),
+
+    # Diagnostic identity (disabled by default)
+    RegisterSpec(
+        key="serial_number", address=0xFC00, length=2, function="input", data_type="uint32", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="meter_code", address=0xFC02, length=1, function="input", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
+    RegisterSpec(
+        key="software_version", address=0xFC03, length=1, function="input", data_type="uint16", unit=None,
+        device_class=None, state_class=None, category="diagnostic", tier="slow", enabled_default=False,
+    ),
+
+    # Diagnostic (disabled by default)
+    RegisterSpec(
+        key="total_system_power_demand", address=84, length=2, function="input", data_type="float32", unit="W",
+        device_class="power", state_class="measurement", category="diagnostic", tier="slow", enabled_default=False,
     ),
 ]
 

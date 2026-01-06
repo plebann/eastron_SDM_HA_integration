@@ -28,6 +28,7 @@ class SdmModbusClient:
         self._timeout = timeout
         self._client: AsyncModbusTcpClient | None = None
         self._lock = asyncio.Lock()
+        self._io_lock = asyncio.Lock()  # serialize Modbus requests to avoid transaction-id interleave
         self._connected = False
 
     async def ensure_connected(self) -> None:
@@ -77,28 +78,29 @@ class SdmModbusClient:
 
     async def read_input_registers(self, address: int, count: int) -> ReadResult:
         await self.ensure_connected()
-        assert self._client is not None
-        method = self._client.read_input_registers
-        last_exc: Exception | None = None
-        attempts: list[tuple[str, dict[str, Any]]] = [
-            ("unit", {"unit": self._unit_id}),
-            ("slave", {"slave": self._unit_id}),
-            ("positional", {}),  # fallback: try without kw (some variants accept address,count,unit_id)
-        ]
-        for mode, kw in attempts:
-            try:
-                if mode == "positional":
-                    rr = await method(address=address, count=count)  # type: ignore[assignment]
-                else:
-                    rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
-                break
-            except TypeError as exc:  # wrong signature
-                last_exc = exc
-                continue
-        else:  # no break
-            if last_exc:
-                raise last_exc
-        if rr.isError():  # type: ignore[attr-defined]
-            raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
-        # rr.registers is a list[int]
-        return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
+        async with self._io_lock:  # ensure only one in-flight request to keep transaction ids aligned
+            assert self._client is not None
+            method = self._client.read_input_registers
+            last_exc: Exception | None = None
+            attempts: list[tuple[str, dict[str, Any]]] = [
+                ("unit", {"unit": self._unit_id}),
+                ("slave", {"slave": self._unit_id}),
+                ("positional", {}),  # fallback: try without kw (some variants accept address,count,unit_id)
+            ]
+            for mode, kw in attempts:
+                try:
+                    if mode == "positional":
+                        rr = await method(address=address, count=count)  # type: ignore[assignment]
+                    else:
+                        rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
+                    break
+                except TypeError as exc:  # wrong signature
+                    last_exc = exc
+                    continue
+            else:  # no break
+                if last_exc:
+                    raise last_exc
+            if rr.isError():  # type: ignore[attr-defined]
+                raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
+            # rr.registers is a list[int]
+            return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]

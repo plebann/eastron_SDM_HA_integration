@@ -133,6 +133,14 @@ def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
             return None
         combined = (registers[0] << 16) | registers[1]
         return struct.unpack(">f", combined.to_bytes(4, byteorder="big"))[0]
+    if spec.data_type == "uint32":
+        if len(registers) < 2:
+            return None
+        return (registers[0] << 16) | registers[1]
+    if spec.data_type in {"uint16", "hex16"}:
+        if not registers:
+            return None
+        return registers[0]
     return None
 
 

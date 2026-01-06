@@ -48,16 +48,19 @@
         "name": "Current"
       },
       "active_power": {
-        "name": "Active Power"
+        "name": "Power"
       },
       "frequency": {
         "name": "Frequency"
       },
       "import_active_energy": {
-        "name": "Import Active Energy"
+        "name": "Import Energy"
+      },
+      "export_active_energy": {
+        "name": "Export Energy"
       },
       "total_active_energy": {
-        "name": "Total Active Energy"
+        "name": "Total Energy"
       },
       "apparent_power": {
         "name": "Apparent Power"
@@ -70,6 +73,15 @@
       },
       "total_system_power_demand": {
         "name": "Total System Power Demand"
+      },
+      "serial_number": {
+        "name": "Serial Number"
+      },
+      "meter_code": {
+        "name": "Meter Code"
+      },
+      "software_version": {
+        "name": "Software Version"
       }
     }
   }
