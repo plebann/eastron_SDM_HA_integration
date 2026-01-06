@@ -39,31 +39,12 @@ class SdmModbusClient:
             if self._client:
                 with suppress(Exception):
                     await self._client.close()
-            # Attempt to import an RTU framer for better transaction id alignment when the
-            # device expects RTU style encapsulation over TCP (common with SDM meters via gateways).
-            framer: Any | None = None
-            with suppress(Exception):
-                from pymodbus.framer import FramerType  # type: ignore
-
-                framer = FramerType.RTU
-
-            if framer is None:  # fallback for older pymodbus layouts
-                with suppress(Exception):  # optional
-                    try:
-                        from pymodbus.framer.rtu_framer import ModbusRtuFramer as _Framer  # type: ignore
-                    except Exception:  # pragma: no cover
-                        from pymodbus.transaction import ModbusRtuFramer as _Framer  # type: ignore
-                    framer = _Framer
-
-            kwargs: dict[str, Any] = {
-                "host": self._host,
-                "port": self._port,
-                "timeout": self._timeout,
-            }
-            if framer:
-                kwargs["framer"] = framer
-
-            self._client = AsyncModbusTcpClient(**kwargs)
+            # Use the default TCP framer (no RTU override) to align with MBAP responses observed on the gateway.
+            self._client = AsyncModbusTcpClient(
+                host=self._host,
+                port=self._port,
+                timeout=self._timeout,
+            )
             await self._client.connect()
             self._connected = bool(self._client.connected)  # type: ignore[attr-defined]
             if not self._connected:
