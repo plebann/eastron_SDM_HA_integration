@@ -20,6 +20,8 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_ENABLE_ADVANCED,
     CONF_ENABLE_DIAGNOSTIC,
+    CONF_ENABLE_TWO_WAY,
+    CONF_ENABLE_CONFIG,
     CONF_NORMAL_DIVISOR,
     CONF_SLOW_DIVISOR,
     CONF_DEBUG,
@@ -57,6 +59,8 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self.slow_divisor: int = data.get(CONF_SLOW_DIVISOR, DEFAULT_SLOW_DIVISOR)
         self.enable_advanced: bool = data.get(CONF_ENABLE_ADVANCED, False)
         self.enable_diagnostic: bool = data.get(CONF_ENABLE_DIAGNOSTIC, False)
+        self.enable_two_way: bool = data.get(CONF_ENABLE_TWO_WAY, False)
+        self.enable_config: bool = data.get(CONF_ENABLE_CONFIG, False)
         self.debug: bool = data.get(CONF_DEBUG, False)
 
         self._client = SdmModbusClient(self.host, self.port, self.unit_id)
@@ -65,6 +69,8 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._specs = get_register_specs(
             enable_advanced=self.enable_advanced,
             enable_diagnostic=self.enable_diagnostic,
+            enable_two_way=self.enable_two_way,
+            enable_config=self.enable_config,
         )
         self._fast = [s for s in self._specs if s.tier == "fast"]
         self._normal = [s for s in self._specs if s.tier == "normal"]
@@ -125,6 +131,8 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         data = {**self.entry.data, **self.entry.options}
         self.enable_advanced = data.get(CONF_ENABLE_ADVANCED, self.enable_advanced)
         self.enable_diagnostic = data.get(CONF_ENABLE_DIAGNOSTIC, self.enable_diagnostic)
+        self.enable_two_way = data.get(CONF_ENABLE_TWO_WAY, self.enable_two_way)
+        self.enable_config = data.get(CONF_ENABLE_CONFIG, self.enable_config)
         self.normal_divisor = data.get(CONF_NORMAL_DIVISOR, self.normal_divisor)
         self.slow_divisor = data.get(CONF_SLOW_DIVISOR, self.slow_divisor)
         scan_interval = data.get(CONF_SCAN_INTERVAL, self.scan_interval)

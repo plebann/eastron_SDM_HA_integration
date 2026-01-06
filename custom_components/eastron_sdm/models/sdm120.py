@@ -47,11 +47,11 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     ),
     RegisterSpec(
         key="export_active_energy", address=74, length=2, function="input", data_type="float32", unit="kWh",
-        device_class="energy", state_class="total_increasing", category="basic", tier="slow", enabled_default=True,
+        device_class="energy", state_class="total_increasing", category="two-way", tier="slow", enabled_default=False,
     ),
     RegisterSpec(
         key="total_active_energy", address=342, length=2, function="input", data_type="float32", unit="kWh",
-        device_class="energy", state_class="total_increasing", category="basic", tier="slow", enabled_default=True,
+        device_class="energy", state_class="total_increasing", category="two-way", tier="slow", enabled_default=False,
     ),
 
     # Advanced (disabled by default) - may be enabled later via options
@@ -108,16 +108,25 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 ]
 
 
-def get_register_specs(*, enable_advanced: bool, enable_diagnostic: bool) -> list[RegisterSpec]:
+def get_register_specs(
+    *,
+    enable_advanced: bool,
+    enable_diagnostic: bool,
+    enable_two_way: bool,
+    enable_config: bool,
+) -> list[RegisterSpec]:
     """Return filtered register specs based on option flags."""
+    category_flags = {
+        "advanced": enable_advanced,
+        "diagnostic": enable_diagnostic,
+        "two-way": enable_two_way,
+        "config": enable_config,
+    }
+
     specs: list[RegisterSpec] = []
     for spec in BASE_SDM120_SPECS:
-        if spec.category == "advanced" and not enable_advanced:
-            if not spec.enabled_default:
-                continue
-        if spec.category == "diagnostic" and not enable_diagnostic:
-            if not spec.enabled_default:
-                continue
-        if spec.enabled_default or (spec.category == "advanced" and enable_advanced) or (spec.category == "diagnostic" and enable_diagnostic):
-            specs.append(spec)
+        flag = category_flags.get(spec.category)
+        if flag is False and not spec.enabled_default:
+            continue
+        specs.append(spec)
     return specs

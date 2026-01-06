@@ -16,6 +16,8 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_ENABLE_ADVANCED,
     CONF_ENABLE_DIAGNOSTIC,
+    CONF_ENABLE_TWO_WAY,
+    CONF_ENABLE_CONFIG,
     CONF_NORMAL_DIVISOR,
     CONF_SLOW_DIVISOR,
     CONF_DEBUG,
@@ -36,6 +38,8 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_ENABLE_ADVANCED, default=False): bool,
         vol.Optional(CONF_ENABLE_DIAGNOSTIC, default=False): bool,
+        vol.Optional(CONF_ENABLE_TWO_WAY, default=False): bool,
+        vol.Optional(CONF_ENABLE_CONFIG, default=False): bool,
         vol.Optional(CONF_NORMAL_DIVISOR, default=DEFAULT_NORMAL_DIVISOR): int,
         vol.Optional(CONF_SLOW_DIVISOR, default=DEFAULT_SLOW_DIVISOR): int,
         vol.Optional(CONF_DEBUG, default=False): bool,
@@ -101,13 +105,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         data = {**self._entry.data, **self._entry.options}
         schema = vol.Schema(
             {
+                vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
+                vol.Optional(CONF_PORT, default=data.get(CONF_PORT, 502)): int,
+                vol.Required(CONF_UNIT_ID, default=data.get(CONF_UNIT_ID, 1)): int,
                 vol.Required(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
                 vol.Required(CONF_ENABLE_ADVANCED, default=data.get(CONF_ENABLE_ADVANCED, False)): bool,
                 vol.Required(CONF_ENABLE_DIAGNOSTIC, default=data.get(CONF_ENABLE_DIAGNOSTIC, False)): bool,
+                vol.Required(CONF_ENABLE_TWO_WAY, default=data.get(CONF_ENABLE_TWO_WAY, False)): bool,
+                vol.Required(CONF_ENABLE_CONFIG, default=data.get(CONF_ENABLE_CONFIG, False)): bool,
                 vol.Required(CONF_NORMAL_DIVISOR, default=data.get(CONF_NORMAL_DIVISOR, DEFAULT_NORMAL_DIVISOR)): int,
                 vol.Required(CONF_SLOW_DIVISOR, default=data.get(CONF_SLOW_DIVISOR, DEFAULT_SLOW_DIVISOR)): int,
                 vol.Required(CONF_DEBUG, default=data.get(CONF_DEBUG, False)): bool,
             }
         )
+
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 

@@ -32,6 +32,10 @@
           "scan_interval": "Base Scan Interval (s)",
           "enable_advanced": "Enable advanced sensors",
           "enable_diagnostic": "Enable diagnostic sensors",
+          "enable_two_way": "Enable two-way energy sensors",
+          "enable_config": "Enable configuration registers",
+          "enable_two_way": "Enable two-way energy sensors",
+          "enable_config": "Enable configuration registers",
           "normal_divisor": "Normal tier divisor",
           "slow_divisor": "Slow tier divisor",
           "debug": "Enable debug logging"

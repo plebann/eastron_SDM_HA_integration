@@ -20,6 +20,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     specs = get_register_specs(
         enable_advanced=coordinator.enable_advanced,
         enable_diagnostic=coordinator.enable_diagnostic,
+        enable_two_way=coordinator.enable_two_way,
+        enable_config=coordinator.enable_config,
     )
 
     entities = [SdmRegisterSensor(coordinator, entry, spec) for spec in specs]
