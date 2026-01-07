@@ -142,7 +142,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         await self._client.close()
 
     async def async_write_register(self, spec: RegisterSpec, value: int | Iterable[int]) -> None:
-        """Write a holding register value and trigger refresh."""
+        """Write a holding register value. Normal polling will verify the change."""
         if spec.function != "holding":
             raise ValueError(f"Write attempted on non-holding register {spec.key}")
         if spec.length > 1:
@@ -154,7 +154,6 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             await self._client.write_holding_registers(spec.address, values)
         else:
             await self._client.write_holding_register(spec.address, int(value))
-        await self.async_request_refresh()
 
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""
