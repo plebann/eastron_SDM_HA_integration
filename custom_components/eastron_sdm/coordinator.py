@@ -6,7 +6,7 @@ import logging
 import struct
 from dataclasses import dataclass
 from datetime import timedelta, datetime
-from typing import Any, Iterable
+from typing import Iterable
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -121,12 +121,17 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
     async def async_close(self) -> None:
         await self._client.close()
 
-    async def async_write_register(self, spec: RegisterSpec, value: int) -> None:
+    async def async_write_register(self, spec: RegisterSpec, value: int | Iterable[int]) -> None:
         """Write a holding register value and trigger refresh."""
         if spec.function != "holding":
             raise ValueError(f"Write attempted on non-holding register {spec.key}")
         if spec.length > 1:
-            await self._client.write_holding_registers(spec.address, [int(value)] * spec.length)
+            if isinstance(value, int):
+                raise ValueError(f"Multi-register write for {spec.key} requires {spec.length} values")
+            values = [int(v) for v in value]
+            if len(values) != spec.length:
+                raise ValueError(f"Value length {len(values)} does not match spec length {spec.length} for {spec.key}")
+            await self._client.write_holding_registers(spec.address, values)
         else:
             await self._client.write_holding_register(spec.address, int(value))
         await self.async_request_refresh()

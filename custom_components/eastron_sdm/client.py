@@ -5,7 +5,6 @@ import asyncio
 import logging
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -93,25 +92,7 @@ class SdmModbusClient:
             await self.ensure_connected()
             assert self._client is not None
             method = getattr(self._client, method_name)
-            last_exc: Exception | None = None
-            attempts: list[tuple[str, dict[str, Any]]] = [
-                ("unit", {"unit": self._unit_id}),
-                ("slave", {"slave": self._unit_id}),
-                ("positional", {}),  # fallback: try without kw (some variants accept address,count,unit_id)
-            ]
-            for mode, kw in attempts:
-                try:
-                    if mode == "positional":
-                        rr = await method(address=address, count=count)  # type: ignore[assignment]
-                    else:
-                        rr = await method(address=address, count=count, **kw)  # type: ignore[assignment]
-                    break
-                except TypeError as exc:  # wrong signature
-                    last_exc = exc
-                    continue
-            else:  # no break
-                if last_exc:
-                    raise last_exc
+            rr = await method(address=address, count=count, device_id=self._unit_id)
             if rr.isError():  # type: ignore[attr-defined]
                 raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
             return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
@@ -123,30 +104,9 @@ class SdmModbusClient:
             await self.ensure_connected()
             assert self._client is not None
             method = getattr(self._client, method_name)
-            last_exc: Exception | None = None
-            attempts: list[tuple[str, dict[str, Any]]] = [
-                ("unit", {"unit": self._unit_id}),
-                ("slave", {"slave": self._unit_id}),
-                ("positional", {}),
-            ]
-            for mode, kw in attempts:
-                try:
-                    if method_name == "write_register":
-                        if mode == "positional":
-                            rr = await method(address=address, value=values[0])  # type: ignore[assignment]
-                        else:
-                            rr = await method(address=address, value=values[0], **kw)  # type: ignore[assignment]
-                    else:
-                        if mode == "positional":
-                            rr = await method(address=address, values=values)  # type: ignore[assignment]
-                        else:
-                            rr = await method(address=address, values=values, **kw)  # type: ignore[assignment]
-                    break
-                except TypeError as exc:
-                    last_exc = exc
-                    continue
-            else:  # no break
-                if last_exc:
-                    raise last_exc
+            if method_name == "write_register":
+                rr = await method(address=address, value=values[0], device_id=self._unit_id)  # type: ignore[assignment]
+            else:
+                rr = await method(address=address, values=values, device_id=self._unit_id)  # type: ignore[assignment]
             if rr.isError():  # type: ignore[attr-defined]
                 raise ModbusIOException(f"Modbus write error @ {address} len {len(values)}: {rr}")
