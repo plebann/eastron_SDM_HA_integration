@@ -38,7 +38,7 @@ This document provides a categorized inventory of all SDM630 Modbus registers fo
 | 30077    | 00 4C         | Total Import kVArh              | 4      | kVArh   | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
 | 30079    | 00 4E         | Total Export kVArh              | 4      | kVArh   | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
 | 30085    | 00 54         | Total System Power Demand       | 4      | W       | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
-| 30087    | 00 56         | Max Total System Power Demand   | 4      | W       | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
+| 30087    | 00 56         | Max Total System Power Demand   | 4      | VA      | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
 | 30101    | 00 64         | Total System VA Demand          | 4      | VA      | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
 | 30103    | 00 66         | Max Total System VA Demand      | 4      | VA      | Float     | 1.0           | RO     | sensor        | Diagnostic | None             |
 | 30235    | 00 EA         | Phase 1 L/N Volts THD           | 4      | %       | Float     | 1.0           | RO     | sensor        | Advanced   | None             |
@@ -59,7 +59,7 @@ This document provides a categorized inventory of all SDM630 Modbus registers fo
 | 40025    | 00 18         | Password                        | 4      | -       | Float     | 1.0           | RW     | number        | Config     | Enter password for protected registers |
 | 40029    | 00 1C         | Network Baud Rate               | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 0=2400, 1=4800, 2=9600 (default), 3=19200, 4=38400 |
 | 40087    | 00 56         | Pulse 1 Energy Type             | 4      | -       | Float     | 1.0           | RW     | select        | Config     | Enum: 1=import, 2=total, 4=export (default), 5=import reactive, 6=total reactive, 8=export reactive |
-| 461457   | F0 10         | Reset                           | 2      | -       | HEX       | 1.0           | WO     | button        | Config     | Write 0x0000 to reset max demand |
+| 42001    | F0 10         | Reset                           | 2      | -       | HEX       | 1.0           | WO     | button        | Config     | Write 0x0000 to reset max demand |
 | 464513   | FC 00         | Serial number                   | 4      | -       | UInt32    | 1.0           | RO     | sensor        | Diagnostic | Read only |
 
 **Legend:**
