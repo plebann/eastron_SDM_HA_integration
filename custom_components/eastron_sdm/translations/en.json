@@ -39,6 +39,16 @@
           "normal_divisor": "Normal tier divisor",
           "slow_divisor": "Slow tier divisor",
           "debug": "Enable debug logging"
+        },
+        "data_description": {
+          "scan_interval": "Time interval in seconds between polling the meter for sensor data updates.",
+          "normal_divisor": "Multiplier applied to normal tier scan interval (e.g., 2 = twice as slow).",
+          "slow_divisor": "Multiplier applied to slow tier scan interval (e.g., 5 = five times as slow).",
+          "enable_advanced": "Includes additional advanced sensors.",
+          "enable_diagnostic": "Includes additional diagnostic sensors.",
+          "enable_config": "Includes configuration registers.",
+          "enable_two_way": "Is this a two-way energy meter?",
+          "debug": "Enables debug logging."
         }
       }
     }

@@ -67,15 +67,35 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._cycle = 0
         self._failure_count = 0
         self._specs = get_register_specs()
-        self._fast = [s for s in self._specs if s.tier == "fast"]
-        self._normal = [s for s in self._specs if s.tier == "normal"]
-        self._slow = [s for s in self._specs if s.tier == "slow"]
+        self._fast: list[RegisterSpec] = []
+        self._normal: list[RegisterSpec] = []
+        self._slow: list[RegisterSpec] = []
+        self._rebuild_tier_lists()
         super().__init__(
             hass,
             _LOGGER,
             name=f"SDM {self.host}:{self.port} unit {self.unit_id}",
             update_interval=timedelta(seconds=self.scan_interval),
         )
+
+    def _should_include_spec(self, spec: RegisterSpec) -> bool:
+        """Determine if a register spec should be included based on current settings."""
+        if spec.category == "advanced" and not self.enable_advanced:
+            return False
+        if spec.category == "diagnostic" and not self.enable_diagnostic:
+            return False
+        if spec.category == "config" and not self.enable_config:
+            return False
+        # Two-way energy sensors check
+        if spec.key in ("export_active_energy", "import_active_energy") and not self.enable_two_way:
+            return False
+        return True
+
+    def _rebuild_tier_lists(self) -> None:
+        """Rebuild the tier lists based on current enable settings."""
+        self._fast = [s for s in self._specs if s.tier == "fast" and self._should_include_spec(s)]
+        self._normal = [s for s in self._specs if s.tier == "normal" and self._should_include_spec(s)]
+        self._slow = [s for s in self._specs if s.tier == "slow" and self._should_include_spec(s)]
 
     async def _async_update_data(self) -> dict[str, DecodedValue]:  # type: ignore[override]
         self._refresh_from_entry()
@@ -139,6 +159,11 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""
         data = {**self.entry.data, **self.entry.options}
+        old_advanced = self.enable_advanced
+        old_diagnostic = self.enable_diagnostic
+        old_two_way = self.enable_two_way
+        old_config = self.enable_config
+        
         self.enable_advanced = data.get(CONF_ENABLE_ADVANCED, self.enable_advanced)
         self.enable_diagnostic = data.get(CONF_ENABLE_DIAGNOSTIC, self.enable_diagnostic)
         self.enable_two_way = data.get(CONF_ENABLE_TWO_WAY, self.enable_two_way)
@@ -149,6 +174,13 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         if scan_interval != self.scan_interval:
             self.scan_interval = scan_interval
             self.update_interval = timedelta(seconds=self.scan_interval)
+        
+        # Rebuild tier lists if any enable setting changed
+        if (old_advanced != self.enable_advanced or 
+            old_diagnostic != self.enable_diagnostic or 
+            old_two_way != self.enable_two_way or 
+            old_config != self.enable_config):
+            self._rebuild_tier_lists()
 
 
 def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
