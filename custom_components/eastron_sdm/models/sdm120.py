@@ -118,6 +118,24 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 ]
 
 
+def _get_spec_by_key(key: str) -> RegisterSpec:
+    """Get a register spec by its key.
+    
+    Args:
+        key: The register key to look up.
+        
+    Returns:
+        RegisterSpec instance matching the key.
+        
+    Raises:
+        ValueError: If no spec found for the given key.
+    """
+    for spec in BASE_SDM120_SPECS:
+        if spec.key == key:
+            return spec
+    raise ValueError(f"No spec found for key: {key}")
+
+
 def get_register_specs() -> list[RegisterSpec]:
     """Return all register specs; enabled_default drives registry enabled state."""
     return list(BASE_SDM120_SPECS)
