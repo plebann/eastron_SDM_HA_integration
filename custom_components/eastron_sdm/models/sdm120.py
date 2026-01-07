@@ -23,6 +23,7 @@ class RegisterSpec:
     min_value: float | None = None  # for number controls
     max_value: float | None = None  # for number controls
     step: float | None = None  # for number controls
+    mode: str | None = None  # for number controls: 'auto' | 'slider'
 
 BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     # FAST tier (every base cycle)
@@ -82,7 +83,7 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     RegisterSpec(
         key="meter_id", address=20, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
-        control="number", min_value=1, max_value=247, step=1,
+        control="number", min_value=1, max_value=247, step=1, mode="box"
     ),
     RegisterSpec(
         key="baud_rate", address=28, length=1, function="holding", data_type="uint16", unit=None,
@@ -92,7 +93,7 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     RegisterSpec(
         key="time_of_scroll_display", address=63744, length=1, function="holding", data_type="uint16", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
-        control="number", min_value=0, max_value=30, step=1,
+        control="number", min_value=0, max_value=30, step=1, mode="box"
     ),
 
     # Diagnostic identity (disabled by default) — holding registers per vendor map

@@ -32,7 +32,7 @@ class SdmConfigNumber(SdmBaseEntity, NumberEntity):
         self._attr_native_min_value = spec.min_value
         self._attr_native_max_value = spec.max_value
         self._attr_native_step = spec.step
-        self._attr_mode = NumberMode.AUTO if spec.step and spec.step < 1 else NumberMode.SLIDER
+        self._attr_mode = spec.mode or NumberMode.AUTO
 
     def _current_value(self) -> float | int | None:
         data: dict[str, DecodedValue] = self.coordinator.data or {}
