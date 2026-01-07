@@ -76,17 +76,17 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
 
     # Config (disabled by default)
     RegisterSpec(
-        key="network_parity_stop", address=18, length=1, function="holding", data_type="uint16", unit=None,
+        key="network_parity_stop", address=18, length=2, function="holding", data_type="float32", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
         control="select", options=(0, 1, 2, 3),
     ),
     RegisterSpec(
-        key="meter_id", address=20, length=1, function="holding", data_type="uint16", unit=None,
+        key="meter_id", address=20, length=2, function="holding", data_type="float32", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
         control="number", min_value=1, max_value=247, step=1, mode="box"
     ),
     RegisterSpec(
-        key="baud_rate", address=28, length=1, function="holding", data_type="uint16", unit=None,
+        key="baud_rate", address=28, length=2, function="holding", data_type="float32", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
         control="select", options=(0, 1, 2, 5),
     ),
