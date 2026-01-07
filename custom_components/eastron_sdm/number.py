@@ -8,10 +8,9 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import SdmCoordinator
+from .coordinator import SdmCoordinator, DecodedValue, _encode_value
 from .models.sdm120 import RegisterSpec, get_register_specs
 from .shared_base import SdmBaseEntity
-from .coordinator import DecodedValue
 
 
 class SdmConfigNumber(SdmBaseEntity, NumberEntity):
@@ -50,7 +49,8 @@ class SdmConfigNumber(SdmBaseEntity, NumberEntity):
             raise ValueError("Value below allowed minimum")
         if self._spec.max_value is not None and value > self._spec.max_value:
             raise ValueError("Value above allowed maximum")
-        await self.coordinator.async_write_register(self._spec, int(value))
+        encoded_value = _encode_value(self._spec, value)
+        await self.coordinator.async_write_register(self._spec, encoded_value)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:

@@ -200,6 +200,36 @@ def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:
     return None
 
 
+def _encode_value(spec: RegisterSpec, value: float | int) -> int | list[int]:
+    """Encode a value into register format based on data type.
+    
+    Args:
+        spec: Register specification containing data type and length
+        value: The value to encode (numeric)
+        
+    Returns:
+        For single register (length=1): int value
+        For multiple registers (length>1): list of int values
+    """
+    if spec.data_type == "float32":
+        # Encode as 32-bit float, split into 2 registers (big-endian)
+        packed = struct.pack(">f", float(value))
+        high_word = (packed[0] << 8) | packed[1]
+        low_word = (packed[2] << 8) | packed[3]
+        return [high_word, low_word]
+    if spec.data_type == "uint32":
+        # Encode as 32-bit unsigned int, split into 2 registers
+        int_val = int(value)
+        high_word = (int_val >> 16) & 0xFFFF
+        low_word = int_val & 0xFFFF
+        return [high_word, low_word]
+    if spec.data_type in {"uint16", "hex16"}:
+        # Single 16-bit register
+        return int(value)
+    # Default: single register
+    return int(value)
+
+
 def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
     # Sort by function then address for grouping
     ordered = sorted(specs, key=lambda s: (s.function, s.address))
