@@ -36,6 +36,8 @@ class SdmConfigSelect(SdmBaseEntity, SelectEntity):
 
     def __init__(self, coordinator: SdmCoordinator, entry: ConfigEntry, spec: RegisterSpec) -> None:
         unique_id = f"eastron_sdm_{coordinator.host}_{coordinator.unit_id}_{spec.key}"
+        # Provide a fallback name so registry object_id never becomes "none" if translations are late
+        self._attr_name = spec.key
         super().__init__(coordinator, entry, unique_id=unique_id, translation_key=spec.key)
         self._spec = spec
         self._attr_entity_registry_enabled_default = spec.enabled_default
