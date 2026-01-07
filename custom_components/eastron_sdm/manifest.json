@@ -1,7 +1,7 @@
 {
   "domain": "eastron_sdm",
   "name": "Eastron SDM Meter",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "documentation": "https://github.com/plebann/eastron_SDM_HA_integration",
   "issue_tracker": "https://github.com/plebann/eastron_SDM_HA_integration/issues",
   "requirements": [
