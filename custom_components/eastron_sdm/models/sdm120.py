@@ -83,7 +83,7 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     RegisterSpec(
         key="meter_id", address=20, length=2, function="holding", data_type="float32", unit=None,
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
-        control="number", min_value=1, max_value=247, step=1, mode="box"
+        precision=0, control="number", min_value=1, max_value=247, step=1, mode="box"
     ),
     RegisterSpec(
         key="baud_rate", address=28, length=2, function="holding", data_type="float32", unit=None,
