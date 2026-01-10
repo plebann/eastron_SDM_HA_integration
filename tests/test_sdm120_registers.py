@@ -18,7 +18,6 @@ def test_all_specs_returned():
         "network_parity_stop",
         "meter_id",
         "baud_rate",
-        "time_of_scroll_display",
         "serial_number",
         "meter_code",
         "software_version",

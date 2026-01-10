@@ -101,9 +101,6 @@
     "number": {
       "meter_id": {
         "name": "Meter ID"
-      },
-      "time_of_scroll_display": {
-        "name": "Scroll Display Time"
       }
     },
     "select": {

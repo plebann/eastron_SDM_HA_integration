@@ -90,11 +90,6 @@ BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
         device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
         control="select", options=(0, 1, 2, 5),
     ),
-    RegisterSpec(
-        key="time_of_scroll_display", address=63744, length=1, function="holding", data_type="uint16", unit=None,
-        device_class=None, state_class=None, category="config", tier="slow", enabled_default=False,
-        control="number", min_value=0, max_value=30, step=1, mode="box"
-    ),
 
     # Diagnostic identity (disabled by default) — holding registers per vendor map
     RegisterSpec(
