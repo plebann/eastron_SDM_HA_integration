@@ -214,19 +214,39 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         """Update client/coordinator/unit_id persistence after meter_id changes."""
         if new_unit_id == self.unit_id:
             return
+        old_unit = self.unit_id
 
-        self.unit_id = new_unit_id
+        # Switch client to the new unit to validate the change on-device.
         await self._client.set_unit_id(new_unit_id)
+        self.unit_id = new_unit_id
 
-        # Persist into entry data/options to survive reloads.
-        new_data = {**self.entry.data, CONF_UNIT_ID: new_unit_id}
-        new_options = {**self.entry.options, CONF_UNIT_ID: new_unit_id}
-        # async_update_entry is synchronous; call without awaiting.
-        self.hass.config_entries.async_update_entry(self.entry, data=new_data, options=new_options)
+        try:
+            from .models.sdm120 import _get_spec_by_key
 
-        # Rebuild tiers and refresh to pick up the new addressing context.
-        self._rebuild_tier_lists()
-        await self.async_request_refresh()
+            spec = _get_spec_by_key("meter_id")
+            raw = await self._client.read_holding_registers(spec.address, spec.length)
+            confirmed = _decode(spec, raw.registers)
+            if confirmed is None or int(confirmed) != int(new_unit_id):
+                raise ValueError(f"Meter id verification failed (read back {confirmed})")
+
+            # Persist into entry data/options to survive reloads.
+            new_data = {**self.entry.data, CONF_UNIT_ID: new_unit_id}
+            new_options = {**self.entry.options, CONF_UNIT_ID: new_unit_id}
+            self.hass.config_entries.async_update_entry(self.entry, data=new_data, options=new_options)
+        except Exception as exc:
+            # Roll back to the previous unit id to avoid mismatched polls.
+            _LOGGER.warning("Meter id change not verified; rolling back to unit %s: %s", old_unit, exc)
+            await self._client.set_unit_id(old_unit)
+            self.unit_id = old_unit
+            self.hass.config_entries.async_update_entry(
+                self.entry,
+                data={**self.entry.data, CONF_UNIT_ID: old_unit},
+                options={**self.entry.options, CONF_UNIT_ID: old_unit},
+            )
+        else:
+            # Rebuild tiers and refresh to pick up the new addressing context.
+            self._rebuild_tier_lists()
+            await self.async_request_refresh()
 
     async def async_ensure_serial_number(self) -> str | None:
         """Fetch and cache the meter serial number for stable identity."""
