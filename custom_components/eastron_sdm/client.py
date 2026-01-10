@@ -30,6 +30,17 @@ class SdmModbusClient:
         self._io_lock = asyncio.Lock()
         self._connected = False
 
+    async def set_unit_id(self, unit_id: int) -> None:
+        """Update the Modbus unit identifier and reset the connection if it changed."""
+        if unit_id == self._unit_id:
+            return
+        self._unit_id = unit_id
+        async with self._lock:
+            if self._client:
+                with suppress(Exception):
+                    await self._client.close()
+            self._connected = False
+
     async def ensure_connected(self) -> None:
         async with self._lock:
             if self._connected and self._client and self._client.connected:  # type: ignore[attr-defined]

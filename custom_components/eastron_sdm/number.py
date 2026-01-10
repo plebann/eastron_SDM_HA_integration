@@ -50,7 +50,7 @@ class SdmConfigNumber(SdmBaseEntity, NumberEntity):
         if self._spec.max_value is not None and value > self._spec.max_value:
             raise ValueError("Value above allowed maximum")
         encoded_value = _encode_value(self._spec, value)
-        await self.coordinator.async_write_register(self._spec, encoded_value)
+        await self.coordinator.async_write_register(self._spec, encoded_value, raw_value=value)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:

@@ -86,8 +86,8 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             return False
         if spec.category == "config" and not self.enable_config:
             return False
-        # Two-way energy sensors check
-        if spec.key in ("export_active_energy", "import_active_energy") and not self.enable_two_way:
+        # Two-way energy sensors check (align with register category)
+        if spec.category == "two-way" and not self.enable_two_way:
             return False
         return True
 
@@ -141,8 +141,10 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
     async def async_close(self) -> None:
         await self._client.close()
 
-    async def async_write_register(self, spec: RegisterSpec, value: int | Iterable[int]) -> None:
-        """Write a holding register value. Normal polling will verify the change."""
+    async def async_write_register(
+        self, spec: RegisterSpec, value: int | Iterable[int], *, raw_value: float | int | None = None
+    ) -> None:
+        """Write a holding register value and react to meter_id updates."""
         if spec.function != "holding":
             raise ValueError(f"Write attempted on non-holding register {spec.key}")
         if spec.length > 1:
@@ -154,6 +156,12 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             await self._client.write_holding_registers(spec.address, values)
         else:
             await self._client.write_holding_register(spec.address, int(value))
+
+        # Sync client/unit_id when the meter address changes to avoid breaking communications.
+        if spec.key == "meter_id":
+            new_unit = self._extract_unit_id(raw_value, value)
+            if new_unit is not None:
+                await self._handle_meter_id_change(new_unit)
 
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""
@@ -180,6 +188,40 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             old_two_way != self.enable_two_way or 
             old_config != self.enable_config):
             self._rebuild_tier_lists()
+
+    def _extract_unit_id(self, raw_value: float | int | None, encoded: int | Iterable[int]) -> int | None:
+        """Best-effort extraction of the intended unit id after a meter_id write."""
+        if raw_value is not None:
+            try:
+                return int(raw_value)
+            except Exception:
+                return None
+        if isinstance(encoded, int):
+            return int(encoded)
+        try:
+            lst = list(encoded)
+        except Exception:
+            return None
+        if len(lst) == 1:
+            return int(lst[0])
+        return None
+
+    async def _handle_meter_id_change(self, new_unit_id: int) -> None:
+        """Update client/coordinator/unit_id persistence after meter_id changes."""
+        if new_unit_id == self.unit_id:
+            return
+
+        self.unit_id = new_unit_id
+        await self._client.set_unit_id(new_unit_id)
+
+        # Persist into entry data/options to survive reloads.
+        new_data = {**self.entry.data, CONF_UNIT_ID: new_unit_id}
+        new_options = {**self.entry.options, CONF_UNIT_ID: new_unit_id}
+        await self.hass.config_entries.async_update_entry(self.entry, data=new_data, options=new_options)
+
+        # Rebuild tiers and refresh to pick up the new addressing context.
+        self._rebuild_tier_lists()
+        await self.async_request_refresh()
 
 
 def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:

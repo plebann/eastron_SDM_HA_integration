@@ -79,7 +79,7 @@ class SdmConfigSelect(SdmBaseEntity, SelectEntity):
         if raw_value is None:
             raise ValueError("Invalid option")
         encoded_value = _encode_value(self._spec, raw_value)
-        await self.coordinator.async_write_register(self._spec, encoded_value)
+        await self.coordinator.async_write_register(self._spec, encoded_value, raw_value=raw_value)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
