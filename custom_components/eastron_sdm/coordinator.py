@@ -63,6 +63,10 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self.enable_config: bool = data.get(CONF_ENABLE_CONFIG, False)
         self.debug: bool = data.get(CONF_DEBUG, False)
 
+        # Identity fields
+        self._serial_number: int | None = None
+        self.serial_identifier: str | None = None
+
         self._client = SdmModbusClient(self.host, self.port, self.unit_id)
         self._cycle = 0
         self._failure_count = 0
@@ -217,11 +221,36 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         # Persist into entry data/options to survive reloads.
         new_data = {**self.entry.data, CONF_UNIT_ID: new_unit_id}
         new_options = {**self.entry.options, CONF_UNIT_ID: new_unit_id}
-        await self.hass.config_entries.async_update_entry(self.entry, data=new_data, options=new_options)
+        # async_update_entry is synchronous; call without awaiting.
+        self.hass.config_entries.async_update_entry(self.entry, data=new_data, options=new_options)
 
         # Rebuild tiers and refresh to pick up the new addressing context.
         self._rebuild_tier_lists()
         await self.async_request_refresh()
+
+    async def async_ensure_serial_number(self) -> str | None:
+        """Fetch and cache the meter serial number for stable identity."""
+        if self.serial_identifier:
+            return self.serial_identifier
+        try:
+            from .models.sdm120 import _get_spec_by_key
+
+            spec = _get_spec_by_key("serial_number")
+            raw = await self._client.read_holding_registers(spec.address, spec.length)
+            value = _decode(spec, raw.registers)
+            if value is None:
+                return None
+            self._serial_number = int(value)
+            self.serial_identifier = str(self._serial_number)
+            return self.serial_identifier
+        except Exception as exc:
+            _LOGGER.warning("Unable to read serial_number: %s", exc)
+            return None
+
+    def build_unique_id(self, key: str) -> str:
+        """Build a stable unique_id using serial_number when available."""
+        base = self.serial_identifier or f"{self.host}_{self.unit_id}"
+        return f"eastron_sdm_{base}_{key}"
 
 
 def _decode(spec: RegisterSpec, registers: list[int]) -> float | int | None:

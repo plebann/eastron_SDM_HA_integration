@@ -22,8 +22,9 @@ class SdmBaseEntity(CoordinatorEntity):
 
     @property
     def device_info(self) -> dict[str, Any]:
+        identifier = self.coordinator.serial_identifier or f"{self.coordinator.host}_{self.coordinator.unit_id}"
         return {
-            "identifiers": {(DOMAIN, f"{self.coordinator.host}_{self.coordinator.unit_id}")},
+            "identifiers": {(DOMAIN, identifier)},
             "name": self.entry.title,
             "manufacturer": "Eastron",
             "model": "SDM120",

@@ -21,7 +21,7 @@ class SdmConfigNumber(SdmBaseEntity, NumberEntity):
     _attr_mode = NumberMode.AUTO
 
     def __init__(self, coordinator: SdmCoordinator, entry: ConfigEntry, spec: RegisterSpec) -> None:
-        unique_id = f"eastron_sdm_{coordinator.host}_{coordinator.unit_id}_{spec.key}"
+        unique_id = coordinator.build_unique_id(spec.key)
         # Suggest object_id to avoid "none" suffix if translations are late
         self._attr_suggested_object_id = spec.key
         super().__init__(coordinator, entry, unique_id=unique_id, translation_key=spec.key)

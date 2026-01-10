@@ -6,7 +6,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import entity_registry as er, device_registry as dr
 
 from .const import (
     DOMAIN,
@@ -32,6 +32,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = SdmCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_ensure_serial_number()
+    await _maybe_migrate_to_serial_identity(hass, entry, coordinator)
     hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -80,6 +82,38 @@ async def _sync_entity_registry_enabled_state(hass: HomeAssistant, entry: Config
             registry.async_update_entity(reg_entry.entity_id, disabled_by=None)
         elif not desired_enabled and reg_entry.disabled_by is None:
             registry.async_update_entity(reg_entry.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION)
+
+
+async def _maybe_migrate_to_serial_identity(hass: HomeAssistant, entry: ConfigEntry, coordinator: SdmCoordinator) -> None:
+    """One-time migration from host+unit identifiers to serial-based identifiers."""
+    migrated = entry.options.get("serial_identity_migrated")
+    serial = coordinator.serial_identifier or await coordinator.async_ensure_serial_number()
+    if migrated or not serial:
+        return
+
+    registry = er.async_get(hass)
+    dev_registry = dr.async_get(hass)
+
+    old_identifier = (DOMAIN, f"{coordinator.host}_{coordinator.unit_id}")
+    new_identifier = (DOMAIN, serial)
+
+    device = dev_registry.async_get_device({old_identifier})
+    if device and old_identifier in device.identifiers:
+        dev_registry.async_update_device(device.id, new_identifiers={new_identifier})
+
+    entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+    old_prefix = f"eastron_sdm_{coordinator.host}_{coordinator.unit_id}_"
+    for reg_entry in entries:
+        if not reg_entry.unique_id.startswith(old_prefix):
+            continue
+        new_unique_id = f"eastron_sdm_{serial}_" + reg_entry.unique_id[len(old_prefix):]
+        registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
+        if device and reg_entry.device_id != device.id:
+            registry.async_update_entity(reg_entry.entity_id, device_id=device.id)
+
+    # Mark migration done
+    new_options = {**entry.options, "serial_identity_migrated": True}
+    hass.config_entries.async_update_entry(entry, options=new_options)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
