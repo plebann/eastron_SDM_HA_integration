@@ -11,9 +11,12 @@ DEFAULT_NORMAL_DIVISOR = 3   # every 3 base cycles
 DEFAULT_SLOW_DIVISOR = 30    # every 30 base cycles
 MAX_DIVISOR = 3600
 
+DEFAULT_MODEL = "SDM120M"
+
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_UNIT_ID = "unit_id"
+CONF_MODEL = "model"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_ENABLE_ADVANCED = "enable_advanced"
 CONF_ENABLE_DIAGNOSTIC = "enable_diagnostic"

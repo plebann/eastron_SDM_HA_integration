@@ -6,7 +6,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_MODEL, DEFAULT_MODEL
 
 
 class SdmBaseEntity(CoordinatorEntity):
@@ -23,11 +23,13 @@ class SdmBaseEntity(CoordinatorEntity):
     @property
     def device_info(self) -> dict[str, Any]:
         identifier = self.coordinator.serial_identifier or f"{self.coordinator.host}_{self.coordinator.unit_id}"
+        data = {**self.entry.data, **self.entry.options}
+        model = data.get(CONF_MODEL, DEFAULT_MODEL)
         return {
             "identifiers": {(DOMAIN, identifier)},
             "name": self.entry.title,
             "manufacturer": "Eastron",
-            "model": "SDM120",
+            "model": model,
         }
 
     @property

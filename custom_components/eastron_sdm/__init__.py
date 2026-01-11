@@ -14,6 +14,8 @@ from .const import (
     CONF_ENABLE_DIAGNOSTIC,
     CONF_ENABLE_TWO_WAY,
     CONF_ENABLE_CONFIG,
+    CONF_MODEL,
+    DEFAULT_MODEL,
 )
 from .coordinator import SdmCoordinator
 from .models.sdm120 import get_register_specs
@@ -29,6 +31,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pragm
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Eastron SDM from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    # Backfill model for legacy entries created before model field existed
+    await _ensure_model_default(hass, entry)
 
     coordinator = SdmCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -123,3 +128,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if coord:
         await coord.async_close()
     return unload_ok
+
+
+async def _ensure_model_default(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Inject default model into entry data/options if missing (legacy support)."""
+    has_data_model = CONF_MODEL in entry.data
+    has_option_model = CONF_MODEL in entry.options
+    if has_data_model and has_option_model:
+        return
+
+    new_data = entry.data if has_data_model else {**entry.data, CONF_MODEL: DEFAULT_MODEL}
+    # Prefer data value when present; otherwise fall back to default
+    base_model = new_data.get(CONF_MODEL, DEFAULT_MODEL)
+    new_options = entry.options if has_option_model else {**entry.options, CONF_MODEL: base_model}
+
+    hass.config_entries.async_update_entry(entry, data=new_data, options=new_options)

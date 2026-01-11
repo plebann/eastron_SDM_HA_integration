@@ -26,7 +26,7 @@ This integration allows Home Assistant to monitor Eastron SDM120 and SDM630 ener
 1. Go to **Settings > Devices & Services > Add Integration**.
 2. Search for **Eastron SDM Energy Meter**.
 3. Enter the meter's IP address, port (default: 4196), and unit ID (default: 1).
-4. The integration will auto-detect the device model.
+4. Select the device model (currently only **SDM120M** is available).
 5. Enter a friendly name for the meter.
 6. Select which entity categories to enable (Basic, Advanced, Diagnostic).
 7. Set polling intervals for fast, normal, and slow data groups.
@@ -70,7 +70,7 @@ This integration allows Home Assistant to monitor Eastron SDM120 and SDM630 ener
   "port": 4196,
   "unit_id": 1,
   "device_name": "main_panel",
-  "model": "SDM630",
+   "model": "SDM120M",
   "categories": ["basic", "advanced"],
   "poll_fast": 5,
   "poll_normal": 30,

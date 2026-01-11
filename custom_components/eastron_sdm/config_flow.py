@@ -21,6 +21,8 @@ from .const import (
     CONF_NORMAL_DIVISOR,
     CONF_SLOW_DIVISOR,
     CONF_DEBUG,
+    CONF_MODEL,
+    DEFAULT_MODEL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_NORMAL_DIVISOR,
     DEFAULT_SLOW_DIVISOR,
@@ -35,6 +37,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Optional(CONF_PORT, default=502): int,
         vol.Required(CONF_UNIT_ID, default=1): int,
+        vol.Required(CONF_MODEL, default=DEFAULT_MODEL): vol.In([DEFAULT_MODEL]),
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_ENABLE_ADVANCED, default=False): bool,
         vol.Optional(CONF_ENABLE_DIAGNOSTIC, default=False): bool,
@@ -73,7 +76,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc
                 errors[CONF_SLOW_DIVISOR] = "max_value"
 
             if not errors:
-                title = f"{user_input[CONF_NAME]} (SDM120)"
+                model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
+                title = f"{user_input[CONF_NAME]} ({model})"
                 return self.async_create_entry(title=title, data=user_input)
 
         return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA, errors=errors)
@@ -108,6 +112,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
                 vol.Optional(CONF_PORT, default=data.get(CONF_PORT, 502)): int,
                 vol.Required(CONF_UNIT_ID, default=data.get(CONF_UNIT_ID, 1)): int,
+                vol.Required(CONF_MODEL, default=data.get(CONF_MODEL, DEFAULT_MODEL)): vol.In([DEFAULT_MODEL]),
                 vol.Required(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
                 vol.Required(CONF_ENABLE_ADVANCED, default=data.get(CONF_ENABLE_ADVANCED, False)): bool,
                 vol.Required(CONF_ENABLE_DIAGNOSTIC, default=data.get(CONF_ENABLE_DIAGNOSTIC, False)): bool,

@@ -20,7 +20,7 @@ This is an example of the configuration you can export and later import via the 
   "port": 4196,
   "unit_id": 1,
   "device_name": "main_panel",
-  "model": "SDM120",
+  "model": "SDM120M",
   "categories": ["basic", "diagnostic"],
   "poll_fast": 5,
   "poll_normal": 30,
