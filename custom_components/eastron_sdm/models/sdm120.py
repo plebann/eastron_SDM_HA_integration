@@ -1,29 +1,9 @@
 """SDM120 register specifications (Phase 1 Task 1.2)."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Final
 
-@dataclass(frozen=True, slots=True)
-class RegisterSpec:
-    key: str
-    address: int  # zero-based Modbus register address (Input Register base)
-    length: int   # number of 16-bit registers
-    function: str # 'input'
-    data_type: str  # 'float32'
-    unit: str | None
-    device_class: str | None
-    state_class: str | None
-    category: str  # 'basic' | 'advanced' | 'diagnostic' | 'config'
-    tier: str  # 'fast' | 'normal' | 'slow'
-    enabled_default: bool
-    precision: int | None = None  # optional display precision
-    control: str | None = None  # 'number' | 'select'
-    options: tuple[int, ...] | None = None  # for select controls
-    min_value: float | None = None  # for number controls
-    max_value: float | None = None  # for number controls
-    step: float | None = None  # for number controls
-    mode: str | None = None  # for number controls: 'auto' | 'slider'
+from .base import RegisterSpec
 
 BASE_SDM120_SPECS: Final[list[RegisterSpec]] = [
     # FAST tier (every base cycle)

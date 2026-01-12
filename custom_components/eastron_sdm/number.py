@@ -7,9 +7,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_MODEL, DEFAULT_MODEL
 from .coordinator import SdmCoordinator, DecodedValue, _encode_value
-from .models.sdm120 import RegisterSpec, get_register_specs
+from .models import RegisterSpec, get_model_specs
 from .shared_base import SdmBaseEntity
 
 
@@ -57,7 +57,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: SdmCoordinator = data["coordinator"]
 
-    specs = get_register_specs()
+    entry_data = {**entry.data, **entry.options}
+    model = entry_data.get(CONF_MODEL, DEFAULT_MODEL)
+    specs = get_model_specs(model)
     entities = [
         SdmConfigNumber(coordinator, entry, spec)
         for spec in specs

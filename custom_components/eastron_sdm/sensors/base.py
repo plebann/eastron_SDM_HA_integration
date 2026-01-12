@@ -7,7 +7,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 
 from ..shared_base import SdmBaseEntity
 from ..coordinator import SdmCoordinator, DecodedValue
-from ..models.sdm120 import RegisterSpec
+from ..models import RegisterSpec
 
 _DEVICE_CLASS_MAP = {
     "energy": SensorDeviceClass.ENERGY,

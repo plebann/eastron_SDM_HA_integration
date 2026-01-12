@@ -30,7 +30,7 @@ from .const import (
     DEFAULT_SLOW_DIVISOR,
 )
 from .client import SdmModbusClient
-from .models.sdm120 import get_register_specs, RegisterSpec
+from .models import get_model_specs, get_spec_by_key, RegisterSpec
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self.host: str = data[CONF_HOST]
         self.port: int = data.get(CONF_PORT, 502)
         self.unit_id: int = data.get(CONF_UNIT_ID, 1)
+        self.model: str = data.get(CONF_MODEL, DEFAULT_MODEL)
         self.scan_interval: int = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         self.normal_divisor: int = data.get(CONF_NORMAL_DIVISOR, DEFAULT_NORMAL_DIVISOR)
         self.slow_divisor: int = data.get(CONF_SLOW_DIVISOR, DEFAULT_SLOW_DIVISOR)
@@ -70,7 +71,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._client = SdmModbusClient(self.host, self.port, self.unit_id)
         self._cycle = 0
         self._failure_count = 0
-        self._specs = get_register_specs()
+        self._specs = get_model_specs(self.model)
         self._fast: list[RegisterSpec] = []
         self._normal: list[RegisterSpec] = []
         self._slow: list[RegisterSpec] = []
@@ -174,6 +175,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         old_diagnostic = self.enable_diagnostic
         old_two_way = self.enable_two_way
         old_config = self.enable_config
+        old_model = self.model
         
         self.enable_advanced = data.get(CONF_ENABLE_ADVANCED, self.enable_advanced)
         self.enable_diagnostic = data.get(CONF_ENABLE_DIAGNOSTIC, self.enable_diagnostic)
@@ -181,11 +183,17 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self.enable_config = data.get(CONF_ENABLE_CONFIG, self.enable_config)
         self.normal_divisor = data.get(CONF_NORMAL_DIVISOR, self.normal_divisor)
         self.slow_divisor = data.get(CONF_SLOW_DIVISOR, self.slow_divisor)
+        self.model = data.get(CONF_MODEL, self.model)
         scan_interval = data.get(CONF_SCAN_INTERVAL, self.scan_interval)
         if scan_interval != self.scan_interval:
             self.scan_interval = scan_interval
             self.update_interval = timedelta(seconds=self.scan_interval)
         
+        if old_model != self.model:
+            self._specs = get_model_specs(self.model)
+            self._rebuild_tier_lists()
+            return
+
         # Rebuild tier lists if any enable setting changed
         if (old_advanced != self.enable_advanced or 
             old_diagnostic != self.enable_diagnostic or 
@@ -221,9 +229,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self.unit_id = new_unit_id
 
         try:
-            from .models.sdm120 import _get_spec_by_key
-
-            spec = _get_spec_by_key("meter_id")
+            spec = get_spec_by_key(self.model, "meter_id")
             raw = await self._client.read_holding_registers(spec.address, spec.length)
             confirmed = _decode(spec, raw.registers)
             if confirmed is None or int(confirmed) != int(new_unit_id):
@@ -253,9 +259,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         if self.serial_identifier:
             return self.serial_identifier
         try:
-            from .models.sdm120 import _get_spec_by_key
-
-            spec = _get_spec_by_key("serial_number")
+            spec = get_spec_by_key(self.model, "serial_number")
             raw = await self._client.read_holding_registers(spec.address, spec.length)
             value = _decode(spec, raw.registers)
             if value is None:

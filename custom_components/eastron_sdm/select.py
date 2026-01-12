@@ -7,18 +7,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_MODEL, DEFAULT_MODEL, MODEL_SDM630M
 from .coordinator import SdmCoordinator, DecodedValue, _encode_value
-from .models.sdm120 import RegisterSpec, get_register_specs
+from .models import RegisterSpec, get_model_specs
 from .shared_base import SdmBaseEntity
 
 _OPTION_LABELS = {
-    "baud_rate": {
-        0: "2400",
-        1: "4800",
-        2: "9600",
-        5: "1200",
-    },
     "network_parity_stop": {
         0: "1 stop / no parity",
         1: "1 stop / even",
@@ -28,22 +22,32 @@ _OPTION_LABELS = {
 }
 
 
+def _label_map_for(spec_key: str, model: str) -> dict[int, str] | None:
+    if spec_key == "baud_rate":
+        base = {0: "2400", 1: "4800", 2: "9600", 5: "1200"}
+        if model == MODEL_SDM630M:
+            base.update({3: "19200", 4: "38400"})
+        return base
+    return _OPTION_LABELS.get(spec_key)
+
+
 class SdmConfigSelect(SdmBaseEntity, SelectEntity):
     """Writable select entity for SDM config registers."""
 
     _attr_should_poll = False
     _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, coordinator: SdmCoordinator, entry: ConfigEntry, spec: RegisterSpec) -> None:
+    def __init__(self, coordinator: SdmCoordinator, entry: ConfigEntry, spec: RegisterSpec, model: str) -> None:
         unique_id = coordinator.build_unique_id(spec.key)
         # Suggest object_id to avoid "none" suffix if translations are late
         self._attr_suggested_object_id = spec.key
         super().__init__(coordinator, entry, unique_id=unique_id, translation_key=spec.key)
+        self._model = model
         self._spec = spec
         self._attr_entity_registry_enabled_default = spec.enabled_default
         option_values = spec.options or ()
 
-        label_map = _OPTION_LABELS.get(spec.key)
+        label_map = _label_map_for(spec.key, model)
         if label_map:
             # Preserve original ordering from spec.options
             self._options = [label_map.get(v, str(v)) for v in option_values]
@@ -86,9 +90,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: SdmCoordinator = data["coordinator"]
 
-    specs = get_register_specs()
+    entry_data = {**entry.data, **entry.options}
+    model = entry_data.get(CONF_MODEL, DEFAULT_MODEL)
+    specs = get_model_specs(model)
     entities = [
-        SdmConfigSelect(coordinator, entry, spec)
+        SdmConfigSelect(coordinator, entry, spec, model)
         for spec in specs
         if spec.category == "config" and spec.control == "select"
     ]

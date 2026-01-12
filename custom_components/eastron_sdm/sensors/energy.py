@@ -8,7 +8,7 @@ from .base import SdmBaseSensor
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from ..coordinator import SdmCoordinator
-    from ..models.sdm120 import RegisterSpec
+    from ..models import RegisterSpec
 
 
 class SdmEnergySensor(SdmBaseSensor):

@@ -2,15 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add Eastron SDM120 Meter",
-        "description": "Configure connection for SDM120 over RTU-over-TCP.",
+        "title": "Add Eastron SDM Meter",
+        "description": "Configure RTU-over-TCP connection.",
         "data": {
           "name": "Friendly Name",
           "host": "Host",
           "port": "Port",
           "unit_id": "Modbus Unit ID",
           "model": "Model",
-          "scan_interval": "Base Scan Interval (s)",
+          "scan_interval": "Base Scan Interval in seconds, minimum 5 seconds",
           "enable_advanced": "Enable advanced sensors",
           "enable_diagnostic": "Enable diagnostic sensors",
           "enable_two_way": "Enable two-way energy sensors",
@@ -32,7 +32,7 @@
       "init": {
         "title": "Eastron SDM Options",
         "data": {
-          "scan_interval": "Base Scan Interval (s)",
+          "scan_interval": "Base Scan Interval in seconds, minimum 5 seconds",
           "model": "Model",
           "enable_advanced": "Enable advanced sensors",
           "enable_diagnostic": "Enable diagnostic sensors",
@@ -43,7 +43,7 @@
           "debug": "Enable debug logging"
         },
         "data_description": {
-          "model": "Select the meter model; only SDM120M is currently available.",
+          "model": "Select the meter model (SDM120M or SDM630M).",
           "scan_interval": "Time interval in seconds between polling the meter for sensor data updates.",
           "normal_divisor": "Multiplier applied to normal tier scan interval (e.g., 2 = twice as slow).",
           "slow_divisor": "Multiplier applied to slow tier scan interval (e.g., 5 = five times as slow).",
@@ -61,11 +61,44 @@
       "voltage": {
         "name": "Voltage"
       },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
       "current": {
         "name": "Current"
       },
+      "current_l1": {
+        "name": "Current L1"
+      },
+      "current_l2": {
+        "name": "Current L2"
+      },
+      "current_l3": {
+        "name": "Current L3"
+      },
       "active_power": {
         "name": "Power"
+      },
+      "active_power_l1": {
+        "name": "Power L1"
+      },
+      "active_power_l2": {
+        "name": "Power L2"
+      },
+      "active_power_l3": {
+        "name": "Power L3"
+      },
+      "sum_line_currents": {
+        "name": "Sum of Line Currents"
+      },
+      "total_system_power": {
+        "name": "Total System Power"
       },
       "frequency": {
         "name": "Frequency"
@@ -73,14 +106,26 @@
       "import_active_energy": {
         "name": "Import Energy"
       },
+      "total_import_active_energy": {
+        "name": "Total Import Energy"
+      },
       "export_active_energy": {
         "name": "Export Energy"
+      },
+      "total_export_active_energy": {
+        "name": "Total Export Energy"
       },
       "total_active_energy": {
         "name": "Total Energy"
       },
+      "total_system_apparent_power": {
+        "name": "Total Apparent Power"
+      },
       "apparent_power": {
         "name": "Apparent Power"
+      },
+      "total_system_reactive_power": {
+        "name": "Total Reactive Power"
       },
       "reactive_power": {
         "name": "Reactive Power"
@@ -88,8 +133,65 @@
       "power_factor": {
         "name": "Power Factor"
       },
+      "total_system_power_factor": {
+        "name": "Total Power Factor"
+      },
       "total_system_power_demand": {
         "name": "Total System Power Demand"
+      },
+      "max_total_system_power_demand": {
+        "name": "Max Total System Power Demand"
+      },
+      "total_system_va_demand": {
+        "name": "Total System VA Demand"
+      },
+      "neutral_current_demand": {
+        "name": "Neutral Current Demand"
+      },
+      "max_neutral_current_demand": {
+        "name": "Max Neutral Current Demand"
+      },
+      "neutral_current": {
+        "name": "Neutral Current"
+      },
+      "total_import_reactive_energy": {
+        "name": "Total Import Reactive Energy"
+      },
+      "total_export_reactive_energy": {
+        "name": "Total Export Reactive Energy"
+      },
+      "total_apparent_energy": {
+        "name": "Total Apparent Energy"
+      },
+      "total_reactive_energy": {
+        "name": "Total Reactive Energy"
+      },
+      "import_active_energy_l1": {
+        "name": "Import Energy L1"
+      },
+      "import_active_energy_l2": {
+        "name": "Import Energy L2"
+      },
+      "import_active_energy_l3": {
+        "name": "Import Energy L3"
+      },
+      "export_active_energy_l1": {
+        "name": "Export Energy L1"
+      },
+      "export_active_energy_l2": {
+        "name": "Export Energy L2"
+      },
+      "export_active_energy_l3": {
+        "name": "Export Energy L3"
+      },
+      "total_active_energy_l1": {
+        "name": "Total Energy L1"
+      },
+      "total_active_energy_l2": {
+        "name": "Total Energy L2"
+      },
+      "total_active_energy_l3": {
+        "name": "Total Energy L3"
       },
       "serial_number": {
         "name": "Serial Number"

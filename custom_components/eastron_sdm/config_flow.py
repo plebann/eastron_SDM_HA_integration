@@ -29,6 +29,7 @@ from .const import (
     MIN_SCAN_INTERVAL,
     MAX_SCAN_INTERVAL,
     MAX_DIVISOR,
+    SUPPORTED_MODELS,
 )
 
 DATA_SCHEMA = vol.Schema(
@@ -37,7 +38,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Optional(CONF_PORT, default=502): int,
         vol.Required(CONF_UNIT_ID, default=1): int,
-        vol.Required(CONF_MODEL, default=DEFAULT_MODEL): vol.In([DEFAULT_MODEL]),
+        vol.Required(CONF_MODEL, default=DEFAULT_MODEL): vol.In(list(SUPPORTED_MODELS)),
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_ENABLE_ADVANCED, default=False): bool,
         vol.Optional(CONF_ENABLE_DIAGNOSTIC, default=False): bool,
@@ -112,7 +113,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
                 vol.Optional(CONF_PORT, default=data.get(CONF_PORT, 502)): int,
                 vol.Required(CONF_UNIT_ID, default=data.get(CONF_UNIT_ID, 1)): int,
-                vol.Required(CONF_MODEL, default=data.get(CONF_MODEL, DEFAULT_MODEL)): vol.In([DEFAULT_MODEL]),
+                vol.Required(CONF_MODEL, default=data.get(CONF_MODEL, DEFAULT_MODEL)): vol.In(list(SUPPORTED_MODELS)),
                 vol.Required(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
                 vol.Required(CONF_ENABLE_ADVANCED, default=data.get(CONF_ENABLE_ADVANCED, False)): bool,
                 vol.Required(CONF_ENABLE_DIAGNOSTIC, default=data.get(CONF_ENABLE_DIAGNOSTIC, False)): bool,
