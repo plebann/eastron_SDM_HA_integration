@@ -1,6 +1,6 @@
 # Eastron SDM Home Assistant Integration (Custom / HACS)
 
-Version: 0.1.0
+Version: 0.1
 
 A Home Assistant custom integration providing tiered, efficient polling of **Eastron SDM120** (initially) energy meter values over **Modbus RTU-over-TCP** using an async `pymodbus` client.
 
@@ -16,16 +16,11 @@ A Home Assistant custom integration providing tiered, efficient polling of **Eas
 - Dynamic entity generation from structured register map
 - Debug mode for raw read value logging
 
-## Installation (Manual)
-
-1. Copy the `custom_components/eastron_sdm` directory into your Home Assistant `config/custom_components/` folder.
-2. Restart Home Assistant.
-3. Add the integration through: Settings → Devices & Services → Add Integration → search for "Eastron SDM".
-
-### HACS (Planned)
+### HACS
 Once published:
 1. In HACS → Integrations → Custom Repositories → Add this repository URL as type "Integration".
-2. Install, then restart, then add the integration via UI.
+2. Install, then restart.
+3. Go to Settings → Devices & services → Add integration → Search for "Eastron SDM Meter"
 
 ## Configuration (Config Flow)
 | Field | Description | Default |
@@ -39,6 +34,8 @@ Once published:
 | Slow Tier Divisor | slow tier every M fast cycles | 30 |
 | Enable Advanced Sensors | Apparent / Reactive / Power Factor | off |
 | Enable Diagnostic Sensors | Demand / internal diagnostics | off |
+| Enable two-way energy sensors | Enable to track import/export | off |
+| Enable configuration registers | Enable to controll basic meter options | off |
 | Enable Debug Logging | Verbose raw read output | off |
 
 Validation:
@@ -79,10 +76,7 @@ Enable in Options to log each Modbus read:
 - Energy totals are exposed as `total_increasing` without internal correction; meter rollover handling (if any) is deferred.
 
 ## Roadmap
-- [ ] Batch register reads per tier
 - [ ] Add SDM630 multi-phase model
-- [ ] Add writable configuration entities (baud rate, parity, pulse width, etc.)
-- [ ] Add reset service(s) for demand / energy (if device supports)
 - [ ] Add diagnostics panel export (raw blocks)
 - [ ] Unit tests for coordinator batching & decode (partial in this repo forthcoming)
 
@@ -108,6 +102,3 @@ See [LICENSE](LICENSE).
 
 ## Disclaimer
 This is an independent community integration; not affiliated with or endorsed by Eastron.
-
-## Changelog
-- **0.1.0**: Initial release with SDM120 support
