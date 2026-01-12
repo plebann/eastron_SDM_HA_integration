@@ -1,6 +1,6 @@
 # Eastron SDM Home Assistant Integration (Custom / HACS)
 
-Version: 0.1.20
+Version: 0.1
 
 A Home Assistant custom integration providing tiered, efficient polling of **Eastron SDM120** (initially) energy meter values over **Modbus RTU-over-TCP** using an async `pymodbus` client.
 
