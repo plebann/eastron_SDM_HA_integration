@@ -6,7 +6,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_MODEL, DEFAULT_MODEL
+from .const import DOMAIN, CONF_MODEL, DEFAULT_MODEL, model_display_name
 
 
 class SdmBaseEntity(CoordinatorEntity):
@@ -29,7 +29,7 @@ class SdmBaseEntity(CoordinatorEntity):
             "identifiers": {(DOMAIN, identifier)},
             "name": self.entry.title,
             "manufacturer": "Eastron",
-            "model": model,
+            "model": model_display_name(model),
         }
 
     @property

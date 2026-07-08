@@ -28,7 +28,7 @@ Once published:
 | Friendly Name | Base name for entities | (required) |
 | Host | RTU-over-TCP gateway IP | (required) |
 | Port | TCP port | 502 |
-| Modbus Unit ID | Slave / device address | 1 |
+| Unit ID | Slave / device address | 1 |
 | Base Scan Interval (s) | Fast tier period | 10 |
 | Normal Tier Divisor | normal tier every N fast cycles | 3 |
 | Slow Tier Divisor | slow tier every M fast cycles | 30 |

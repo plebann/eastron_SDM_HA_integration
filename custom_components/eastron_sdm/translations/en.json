@@ -8,7 +8,7 @@
           "name": "Friendly Name",
           "host": "Host",
           "port": "Port",
-          "unit_id": "Modbus Unit ID",
+          "unit_id": "Unit ID",
           "model": "Model",
           "scan_interval": "Base Scan Interval in seconds, minimum 5 seconds",
           "enable_advanced": "Enable advanced sensors",
@@ -33,7 +33,6 @@
         "title": "Eastron SDM Options",
         "data": {
           "scan_interval": "Base Scan Interval in seconds, minimum 5 seconds",
-          "model": "Model",
           "enable_advanced": "Enable advanced sensors",
           "enable_diagnostic": "Enable diagnostic sensors",
           "enable_two_way": "Enable two-way energy sensors",
@@ -43,7 +42,6 @@
           "debug": "Enable debug logging"
         },
         "data_description": {
-          "model": "Select the meter model (SDM120M or SDM630M).",
           "scan_interval": "Time interval in seconds between polling the meter for sensor data updates.",
           "normal_divisor": "Multiplier applied to normal tier scan interval (e.g., 2 = twice as slow).",
           "slow_divisor": "Multiplier applied to slow tier scan interval (e.g., 5 = five times as slow).",
@@ -205,7 +203,7 @@
     },
     "number": {
       "meter_id": {
-        "name": "Meter ID"
+        "name": "Unit ID"
       }
     },
     "select": {
