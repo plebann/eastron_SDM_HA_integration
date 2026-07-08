@@ -25,12 +25,15 @@ from .const import (
     CONF_NORMAL_DIVISOR,
     CONF_SLOW_DIVISOR,
     CONF_DEBUG,
+    CONF_MODEL,
+    DEFAULT_MODEL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_NORMAL_DIVISOR,
     DEFAULT_SLOW_DIVISOR,
 )
 from .client import SdmModbusClient
 from .models import get_model_specs, get_spec_by_key, RegisterSpec
+from .read_plan import ReadPlanOptions, build_read_plan
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,13 +42,6 @@ class DecodedValue:
     key: str
     value: float | int | None
     updated: datetime
-
-@dataclass(slots=True)
-class _Batch:
-    start: int
-    length: int
-    function: str
-    specs: list[RegisterSpec]
 
 class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -72,10 +68,6 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._cycle = 0
         self._failure_count = 0
         self._specs = get_model_specs(self.model)
-        self._fast: list[RegisterSpec] = []
-        self._normal: list[RegisterSpec] = []
-        self._slow: list[RegisterSpec] = []
-        self._rebuild_tier_lists()
         super().__init__(
             hass,
             _LOGGER,
@@ -83,38 +75,25 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             update_interval=timedelta(seconds=self.scan_interval),
         )
 
-    def _should_include_spec(self, spec: RegisterSpec) -> bool:
-        """Determine if a register spec should be included based on current settings."""
-        if spec.category == "advanced" and not self.enable_advanced:
-            return False
-        if spec.category == "diagnostic" and not self.enable_diagnostic:
-            return False
-        if spec.category == "config" and not self.enable_config:
-            return False
-        # Two-way energy sensors check (align with register category)
-        if spec.category == "two-way" and not self.enable_two_way:
-            return False
-        return True
-
-    def _rebuild_tier_lists(self) -> None:
-        """Rebuild the tier lists based on current enable settings."""
-        self._fast = [s for s in self._specs if s.tier == "fast" and self._should_include_spec(s)]
-        self._normal = [s for s in self._specs if s.tier == "normal" and self._should_include_spec(s)]
-        self._slow = [s for s in self._specs if s.tier == "slow" and self._should_include_spec(s)]
+    def _read_plan_options(self) -> ReadPlanOptions:
+        return ReadPlanOptions(
+            enable_advanced=self.enable_advanced,
+            enable_diagnostic=self.enable_diagnostic,
+            enable_two_way=self.enable_two_way,
+            enable_config=self.enable_config,
+            normal_divisor=self.normal_divisor,
+            slow_divisor=self.slow_divisor,
+        )
 
     async def _async_update_data(self) -> dict[str, DecodedValue]:  # type: ignore[override]
         self._refresh_from_entry()
         try:
-            specs_to_read = list(self._fast)
-            if self._cycle % self.normal_divisor == 0:
-                specs_to_read.extend(self._normal)
-            if self._cycle % self.slow_divisor == 0:
-                specs_to_read.extend(self._slow)
-            self._cycle = (self._cycle + 1) % (self.normal_divisor * self.slow_divisor)
+            read_plan = build_read_plan(self._specs, self._read_plan_options(), self._cycle)
+            self._cycle = read_plan.next_cycle
 
             decoded: dict[str, DecodedValue] = {**(self.data or {})}
 
-            for batch in _build_batches(specs_to_read):
+            for batch in read_plan.batches:
                 if batch.function == "input":
                     raw = await self._client.read_input_registers(batch.start, batch.length)
                 elif batch.function == "holding":
@@ -171,10 +150,6 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""
         data = {**self.entry.data, **self.entry.options}
-        old_advanced = self.enable_advanced
-        old_diagnostic = self.enable_diagnostic
-        old_two_way = self.enable_two_way
-        old_config = self.enable_config
         old_model = self.model
         
         self.enable_advanced = data.get(CONF_ENABLE_ADVANCED, self.enable_advanced)
@@ -191,15 +166,6 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         
         if old_model != self.model:
             self._specs = get_model_specs(self.model)
-            self._rebuild_tier_lists()
-            return
-
-        # Rebuild tier lists if any enable setting changed
-        if (old_advanced != self.enable_advanced or 
-            old_diagnostic != self.enable_diagnostic or 
-            old_two_way != self.enable_two_way or 
-            old_config != self.enable_config):
-            self._rebuild_tier_lists()
 
     def _extract_unit_id(self, raw_value: float | int | None, encoded: int | Iterable[int]) -> int | None:
         """Best-effort extraction of the intended unit id after a meter_id write."""
@@ -250,8 +216,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
                 options={**self.entry.options, CONF_UNIT_ID: old_unit},
             )
         else:
-            # Rebuild tiers and refresh to pick up the new addressing context.
-            self._rebuild_tier_lists()
+            # Refresh to pick up the new addressing context.
             await self.async_request_refresh()
 
     async def async_ensure_serial_number(self) -> str | None:
@@ -323,24 +288,3 @@ def _encode_value(spec: RegisterSpec, value: float | int) -> int | list[int]:
     # Default: single register
     return int(value)
 
-
-def _build_batches(specs: Iterable[RegisterSpec]) -> list[_Batch]:
-    # Sort by function then address for grouping
-    ordered = sorted(specs, key=lambda s: (s.function, s.address))
-    batches: list[_Batch] = []
-    current: _Batch | None = None
-    for spec in ordered:
-        if current is None:
-            current = _Batch(start=spec.address, length=spec.length, function=spec.function, specs=[spec])
-            continue
-        end = current.start + current.length
-        gap = spec.address - end
-        if spec.function == current.function and gap <= 0:  # only merge contiguous blocks per function
-            current.length = (spec.address + spec.length) - current.start
-            current.specs.append(spec)
-        else:
-            batches.append(current)
-            current = _Batch(start=spec.address, length=spec.length, function=spec.function, specs=[spec])
-    if current:
-        batches.append(current)
-    return batches

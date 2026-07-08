@@ -7,24 +7,27 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "custom_components"))
 
 from eastron_sdm.models.sdm120 import get_register_specs, BASE_SDM120_SPECS
+from eastron_sdm.read_plan import ReadPlanOptions, build_read_plan
+
+
+def _plan_keys(options=None):
+    plan = build_read_plan(get_register_specs(), options or ReadPlanOptions(), cycle=0)
+    return {spec.key for batch in plan.batches for spec in batch.specs}
 
 def test_register_specs():
     """Test register specification logic."""
     print("Testing register specifications...")
     
-    # Test default (basic only)
-    basic_specs = get_register_specs(enable_advanced=False, enable_diagnostic=False)
-    basic_keys = {s.key for s in basic_specs}
+    # Test default Meter polling shape (basic only)
+    basic_keys = _plan_keys()
     print(f"Basic sensors: {basic_keys}")
     
     # Test with advanced
-    advanced_specs = get_register_specs(enable_advanced=True, enable_diagnostic=False)
-    advanced_keys = {s.key for s in advanced_specs}
+    advanced_keys = _plan_keys(ReadPlanOptions(enable_advanced=True))
     print(f"With advanced: {advanced_keys}")
     
     # Test with diagnostic
-    all_specs = get_register_specs(enable_advanced=True, enable_diagnostic=True)
-    all_keys = {s.key for s in all_specs}
+    all_keys = _plan_keys(ReadPlanOptions(enable_advanced=True, enable_diagnostic=True))
     print(f"With all: {all_keys}")
     
     print("✅ Register specs working correctly")
