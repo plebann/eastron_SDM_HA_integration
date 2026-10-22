@@ -24,6 +24,10 @@ class SdmModbusClient:
         """Address subsequent requests to a different Unit ID; the shared connection is untouched."""
         self._unit_id = unit_id
 
+    def _current_unit_id(self) -> int:
+        # Resolved by the endpoint once it holds the lock, so a queued request follows a Unit ID change.
+        return self._unit_id
+
     async def read_input_registers(self, address: int, count: int) -> ReadResult:
         return await self._read_registers("read_input_registers", address, count)
 
@@ -37,7 +41,7 @@ class SdmModbusClient:
         await self._write_registers("write_registers", address, values)
 
     async def _read_registers(self, method_name: str, address: int, count: int) -> ReadResult:
-        rr = await self._endpoint.request(method_name, self._unit_id, address=address, count=count)
+        rr = await self._endpoint.request(method_name, self._current_unit_id, address=address, count=count)
         if rr.isError():  # type: ignore[attr-defined]
             raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
         return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
@@ -46,8 +50,8 @@ class SdmModbusClient:
         if not values:
             raise ValueError("No values provided for write")
         if method_name == "write_register":
-            rr = await self._endpoint.request(method_name, self._unit_id, address=address, value=values[0])
+            rr = await self._endpoint.request(method_name, self._current_unit_id, address=address, value=values[0])
         else:
-            rr = await self._endpoint.request(method_name, self._unit_id, address=address, values=values)
+            rr = await self._endpoint.request(method_name, self._current_unit_id, address=address, values=values)
         if rr.isError():  # type: ignore[attr-defined]
             raise ModbusIOException(f"Modbus write error @ {address} len {len(values)}: {rr}")

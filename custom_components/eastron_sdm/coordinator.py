@@ -139,8 +139,13 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         """Write a holding register value and react to meter_id updates."""
         if spec.function != "holding":
             raise ValueError(f"Write attempted on non-holding register {spec.key}")
-        new_unit: int | None = None
-        if spec.key == "meter_id":
+        if spec.key != "meter_id":
+            await self._write_values(spec, value)
+            return
+
+        # Check, write, verify and persist a Unit ID change as one step per endpoint,
+        # so two meters cannot both claim the same free ID.
+        async with self._endpoint.address_lock:
             new_unit = self._extract_unit_id(raw_value, value)
             if new_unit is not None and new_unit != self.unit_id:
                 conflict = find_unit_id_conflict(
@@ -150,6 +155,13 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
                     raise HomeAssistantError(
                         f"Unit ID {new_unit} is already used by another meter on {self.host}:{self.port}"
                     )
+            await self._write_values(spec, value)
+
+            # Sync client/unit_id when the meter address changes to avoid breaking communications.
+            if new_unit is not None:
+                await self._handle_meter_id_change(new_unit)
+
+    async def _write_values(self, spec: RegisterSpec, value: int | Iterable[int]) -> None:
         if spec.length > 1:
             if isinstance(value, int):
                 raise ValueError(f"Multi-register write for {spec.key} requires {spec.length} values")
@@ -159,10 +171,6 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             await self._client.write_holding_registers(spec.address, values)
         else:
             await self._client.write_holding_register(spec.address, int(value))
-
-        # Sync client/unit_id when the meter address changes to avoid breaking communications.
-        if new_unit is not None:
-            await self._handle_meter_id_change(new_unit)
 
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""

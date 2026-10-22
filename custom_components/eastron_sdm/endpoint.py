@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -33,22 +34,37 @@ class ModbusEndpoint:
         self._timeout = timeout
         self._client: AsyncModbusTcpClient | None = None
         self._lock = asyncio.Lock()
+        self._retired = False
+        # Serializes Unit ID changes (conflict check, write, verify, persist) across the endpoint's meters.
+        # Separate from the transport lock, which each request inside such a change takes itself.
+        self.address_lock = asyncio.Lock()
 
     @property
     def key(self) -> EndpointKey:
         return endpoint_key(self.host, self.port)
 
-    async def request(self, method_name: str, unit_id: int, **kwargs: Any) -> Any:
-        """Send one request for a Unit ID; no other request on this endpoint overlaps it."""
+    async def request(self, method_name: str, unit_id: Callable[[], int], **kwargs: Any) -> Any:
+        """Send one request; no other request on this endpoint overlaps it.
+
+        The Unit ID is resolved once the lock is held, so a request queued behind a Unit ID change
+        is addressed to the meter's current ID.
+        """
         async with self._lock:
+            if self._retired:
+                raise ConnectionError(f"Modbus endpoint {self.host}:{self.port} was released")
             await self._ensure_connected()
             assert self._client is not None
             method = getattr(self._client, method_name)
-            return await method(device_id=unit_id, **kwargs)
+            return await method(device_id=unit_id(), **kwargs)
 
-    async def close(self) -> None:
+    async def retire_if_unused(self) -> bool:
+        """Close the connection and refuse further requests unless a user acquired the endpoint again."""
         async with self._lock:
+            if self.users > 0:
+                return False
+            self._retired = True
             self._close_client()
+            return True
 
     async def _ensure_connected(self) -> None:
         if self._client is not None and self._client.connected:
@@ -79,14 +95,18 @@ def async_acquire_endpoint(hass: HomeAssistant, host: str, port: int) -> ModbusE
 
 
 async def async_release_endpoint(hass: HomeAssistant, endpoint: ModbusEndpoint) -> None:
-    """Drop one user and close the connection once the last user is gone."""
+    """Drop one user and close the connection once the last user is gone.
+
+    The endpoint stays registered until it holds its lock, so a meter set up meanwhile
+    reuses it instead of opening a second connection to the same gateway.
+    """
     endpoint.users -= 1
     if endpoint.users > 0:
         return
-    endpoints: dict[EndpointKey, ModbusEndpoint] = hass.data.get(ENDPOINTS_KEY, {})
-    if endpoints.get(endpoint.key) is endpoint:
-        del endpoints[endpoint.key]
-    await endpoint.close()
+    if await endpoint.retire_if_unused():
+        endpoints: dict[EndpointKey, ModbusEndpoint] = hass.data.get(ENDPOINTS_KEY, {})
+        if endpoints.get(endpoint.key) is endpoint:
+            del endpoints[endpoint.key]
 
 
 def find_unit_id_conflict(

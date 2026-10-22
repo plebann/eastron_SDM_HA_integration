@@ -1,13 +1,14 @@
 import asyncio
 from contextlib import suppress
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.const import CONF_NAME
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.eastron_sdm import endpoint as endpoint_module
+from custom_components.eastron_sdm.client import SdmModbusClient
 from custom_components.eastron_sdm.config_flow import ConfigFlow, OptionsFlowHandler
 from custom_components.eastron_sdm.const import (
     CONF_HOST,
@@ -33,6 +34,7 @@ class FakeModbusTcpClient:
     """Stands in for AsyncModbusTcpClient and records overlapping requests."""
 
     instances: list["FakeModbusTcpClient"] = []
+    holding_registers: list[int] | None = None
     in_flight_all = 0
     max_in_flight_all = 0
 
@@ -69,7 +71,7 @@ class FakeModbusTcpClient:
             cls.in_flight_all -= 1
         response = MagicMock()
         response.isError.return_value = False
-        response.registers = [0] * count
+        response.registers = list(FakeModbusTcpClient.holding_registers or [0] * count)
         return response
 
     async def read_input_registers(self, address, count=1, device_id=1):
@@ -88,9 +90,14 @@ class FakeModbusTcpClient:
 @pytest.fixture(autouse=True)
 def fake_pymodbus(monkeypatch):
     FakeModbusTcpClient.instances = []
+    FakeModbusTcpClient.holding_registers = None
     FakeModbusTcpClient.in_flight_all = 0
     FakeModbusTcpClient.max_in_flight_all = 0
     monkeypatch.setattr(endpoint_module, "AsyncModbusTcpClient", FakeModbusTcpClient)
+
+
+def _unit(unit_id):
+    return lambda: unit_id
 
 
 def _fake_hass(entries=()):
@@ -99,6 +106,14 @@ def _fake_hass(entries=()):
     with suppress(RuntimeError):
         hass.loop = asyncio.get_running_loop()
     hass.config_entries.async_entries.return_value = list(entries)
+
+    def update_entry(entry, data=None, options=None):
+        if data is not None:
+            entry.data = data
+        if options is not None:
+            entry.options = options
+
+    hass.config_entries.async_update_entry.side_effect = update_entry
     return hass
 
 
@@ -135,10 +150,10 @@ async def test_writes_and_reads_through_one_endpoint_do_not_overlap():
     endpoint = async_acquire_endpoint(hass, "gateway", 4196)
 
     await asyncio.gather(
-        endpoint.request("read_input_registers", 5, address=0, count=2),
-        endpoint.request("write_register", 6, address=20, value=1),
-        endpoint.request("write_registers", 7, address=20, values=[1, 2]),
-        endpoint.request("read_holding_registers", 5, address=0, count=2),
+        endpoint.request("read_input_registers", _unit(5), address=0, count=2),
+        endpoint.request("write_register", _unit(6), address=20, value=1),
+        endpoint.request("write_registers", _unit(7), address=20, values=[1, 2]),
+        endpoint.request("read_holding_registers", _unit(5), address=0, count=2),
     )
 
     assert FakeModbusTcpClient.instances[0].max_in_flight == 1
@@ -152,9 +167,9 @@ async def test_different_endpoints_stay_independently_pollable():
     third = async_acquire_endpoint(hass, "gateway-a", 4197)
 
     await asyncio.gather(
-        first.request("read_input_registers", 1, address=0, count=2),
-        second.request("read_input_registers", 1, address=0, count=2),
-        third.request("read_input_registers", 1, address=0, count=2),
+        first.request("read_input_registers", _unit(1), address=0, count=2),
+        second.request("read_input_registers", _unit(1), address=0, count=2),
+        third.request("read_input_registers", _unit(1), address=0, count=2),
     )
 
     assert first is not second and first is not third
@@ -199,11 +214,11 @@ async def test_closing_a_coordinator_twice_releases_its_endpoint_once():
 async def test_released_endpoint_reconnects_with_a_fresh_client_on_next_acquire():
     hass = _fake_hass()
     endpoint = async_acquire_endpoint(hass, "gateway", 4196)
-    await endpoint.request("read_input_registers", 5, address=0, count=2)
+    await endpoint.request("read_input_registers", _unit(5), address=0, count=2)
     await async_release_endpoint(hass, endpoint)
 
     again = async_acquire_endpoint(hass, "gateway", 4196)
-    await again.request("read_input_registers", 5, address=0, count=2)
+    await again.request("read_input_registers", _unit(5), address=0, count=2)
 
     assert again is not endpoint
     assert len(FakeModbusTcpClient.instances) == 2
@@ -213,7 +228,7 @@ async def test_released_endpoint_reconnects_with_a_fresh_client_on_next_acquire(
 async def test_endpoint_uses_default_tcp_framing():
     hass = _fake_hass()
     endpoint = async_acquire_endpoint(hass, "gateway", 4196)
-    await endpoint.request("read_input_registers", 5, address=0, count=2)
+    await endpoint.request("read_input_registers", _unit(5), address=0, count=2)
 
     assert "framer" not in FakeModbusTcpClient.instances[0].kwargs
 
@@ -342,3 +357,70 @@ async def test_options_flow_keeps_a_legacy_duplicate_editable_while_its_address_
     result = await _options_flow(hass, entries[1]).async_step_init(_options_input("gateway", 4196, 5))
 
     assert result["type"] == "create_entry"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_meter_id_writes_cannot_both_claim_the_same_free_unit_id():
+    entries = [_entry("a", "gateway", 4196, 5), _entry("b", "gateway", 4196, 6)]
+    hass = _fake_hass(entries)
+    coordinators = [_coordinator(hass, entry) for entry in entries]
+    for coordinator in coordinators:
+        coordinator.async_request_refresh = AsyncMock()
+    spec = get_spec_by_key(MODEL_SDM120M, "meter_id")
+    FakeModbusTcpClient.holding_registers = _encode_value(spec, 8)
+
+    results = await asyncio.gather(
+        *(
+            coordinator.async_write_register(spec, _encode_value(spec, 8), raw_value=8)
+            for coordinator in coordinators
+        ),
+        return_exceptions=True,
+    )
+
+    assert sum(isinstance(result, HomeAssistantError) for result in results) == 1
+    assert sorted(coordinator.unit_id for coordinator in coordinators) in ([5, 8], [6, 8])
+
+
+@pytest.mark.asyncio
+async def test_request_queued_behind_a_unit_id_change_uses_the_new_unit_id():
+    hass = _fake_hass()
+    endpoint = async_acquire_endpoint(hass, "gateway", 4196)
+    handle = SdmModbusClient(endpoint, 5)
+    busy = asyncio.create_task(endpoint.request("read_input_registers", _unit(6), address=0, count=2))
+    await asyncio.sleep(0)
+    queued = asyncio.create_task(handle.read_input_registers(0, 2))
+    await asyncio.sleep(0)
+
+    handle.set_unit_id(9)
+    await asyncio.gather(busy, queued)
+
+    assert FakeModbusTcpClient.instances[0].calls == [("read_input_registers", 6), ("read_input_registers", 9)]
+
+
+@pytest.mark.asyncio
+async def test_endpoint_acquired_while_its_last_release_waits_is_not_replaced_or_closed():
+    hass = _fake_hass()
+    endpoint = async_acquire_endpoint(hass, "gateway", 4196)
+    in_flight = asyncio.create_task(endpoint.request("read_input_registers", _unit(5), address=0, count=2))
+    await asyncio.sleep(0)
+    releasing = asyncio.create_task(async_release_endpoint(hass, endpoint))
+    await asyncio.sleep(0)
+
+    again = async_acquire_endpoint(hass, "gateway", 4196)
+    await asyncio.gather(in_flight, releasing)
+
+    assert again is endpoint
+    assert len(FakeModbusTcpClient.instances) == 1
+    assert not FakeModbusTcpClient.instances[0].closed
+
+
+@pytest.mark.asyncio
+async def test_released_endpoint_refuses_requests_instead_of_reconnecting():
+    hass = _fake_hass()
+    endpoint = async_acquire_endpoint(hass, "gateway", 4196)
+    await async_release_endpoint(hass, endpoint)
+
+    with pytest.raises(ConnectionError):
+        await endpoint.request("read_input_registers", _unit(5), address=0, count=2)
+
+    assert FakeModbusTcpClient.instances == []
