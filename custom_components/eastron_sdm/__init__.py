@@ -36,13 +36,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _ensure_model_default(hass, entry)
 
     coordinator = SdmCoordinator(hass, entry)
-    await coordinator.async_config_entry_first_refresh()
-    await coordinator.async_ensure_serial_number()
-    await _maybe_migrate_to_serial_identity(hass, entry, coordinator)
-    hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+    try:
+        await coordinator.async_config_entry_first_refresh()
+        await coordinator.async_ensure_serial_number()
+        await _maybe_migrate_to_serial_identity(hass, entry, coordinator)
+        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    await _sync_entity_registry_enabled_state(hass, entry)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        await _sync_entity_registry_enabled_state(hass, entry)
+    except BaseException:
+        # A failed setup is never unloaded, so release the shared Modbus endpoint here.
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+        await coordinator.async_close()
+        raise
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     return True
 

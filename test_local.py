@@ -39,12 +39,14 @@ import pytest
 async def test_mock_modbus():
     """Test Modbus client logic with mock data."""
     from eastron_sdm.client import SdmModbusClient
+    from eastron_sdm.endpoint import ModbusEndpoint
     from unittest.mock import AsyncMock, MagicMock
     
     print("\nTesting Modbus client (mock)...")
     
     # Mock client for testing
-    client = SdmModbusClient("192.168.1.100", 502, 1)
+    endpoint = ModbusEndpoint("192.168.1.100", 502)
+    client = SdmModbusClient(endpoint, 1)
     
     # Mock the actual modbus client
     mock_modbus = AsyncMock()
@@ -53,8 +55,8 @@ async def test_mock_modbus():
     mock_response.registers = [0x4234, 0x0000]  # Mock float32 data
     
     mock_modbus.read_input_registers.return_value = mock_response
-    client._client = mock_modbus
-    client._connected = True
+    mock_modbus.connected = True
+    endpoint._client = mock_modbus
     
     # Test read
     result = await client.read_input_registers(0, 2)

@@ -4,6 +4,8 @@ from __future__ import annotations
 DOMAIN = "eastron_sdm"
 VERSION = "0.1.0"
 
+DEFAULT_PORT = 502
+DEFAULT_UNIT_ID = 1
 DEFAULT_SCAN_INTERVAL = 10  # seconds
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 3600

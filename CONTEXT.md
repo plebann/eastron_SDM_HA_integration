@@ -20,6 +20,10 @@ _Avoid_: Treating generated or hand-maintained Markdown inventories as authorita
 The Modbus unit address of a meter. Use Unit ID in user-facing language; `meter_id` may remain an internal implementation key only.
 _Avoid_: Calling the Modbus address Meter ID in UI or documentation
 
+**Modbus endpoint**:
+A host and port through which one or more meters, each identified by its Unit ID, are reached. Meters sharing a Modbus endpoint share one RS485 bus, so their Modbus traffic must never overlap; different Modbus endpoints are independent.
+_Avoid_: Gateway (names the hardware, not the host and port), connection (names a socket)
+
 **Meter polling**:
 The recurring collection of register values from an Eastron SDM meter according to configured tiers and options.
 _Avoid_: Refresh loop, update cycle

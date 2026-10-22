@@ -23,6 +23,8 @@ from .const import (
     CONF_DEBUG,
     CONF_MODEL,
     DEFAULT_MODEL,
+    DEFAULT_PORT,
+    DEFAULT_UNIT_ID,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_NORMAL_DIVISOR,
     DEFAULT_SLOW_DIVISOR,
@@ -32,6 +34,7 @@ from .const import (
     SUPPORTED_MODELS,
     model_display_name,
 )
+from .endpoint import endpoint_key, find_unit_id_conflict
 
 DATA_SCHEMA = vol.Schema(
     {
@@ -96,6 +99,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc
             elif user_input[CONF_SLOW_DIVISOR] > MAX_DIVISOR:
                 errors[CONF_SLOW_DIVISOR] = "max_value"
 
+            if find_unit_id_conflict(
+                self.hass,
+                user_input[CONF_HOST],
+                user_input.get(CONF_PORT, DEFAULT_PORT),
+                user_input[CONF_UNIT_ID],
+            ):
+                errors[CONF_UNIT_ID] = "unit_id_in_use"
+
             if not errors:
                 model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
                 title = f"{user_input[CONF_NAME]} ({model_display_name(model)})"
@@ -125,6 +136,22 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 errors[CONF_SLOW_DIVISOR] = "invalid"
             elif user_input[CONF_SLOW_DIVISOR] > MAX_DIVISOR:
                 errors[CONF_SLOW_DIVISOR] = "max_value"
+
+            # Only re-check when the address changes, so entries that already share a Unit ID stay editable.
+            current = {**self._entry.data, **self._entry.options}
+            host = user_input[CONF_HOST]
+            port = user_input.get(CONF_PORT, DEFAULT_PORT)
+            unit_id = user_input[CONF_UNIT_ID]
+            address_changed = (
+                endpoint_key(host, port)
+                != endpoint_key(current.get(CONF_HOST, ""), current.get(CONF_PORT, DEFAULT_PORT))
+                or unit_id != current.get(CONF_UNIT_ID, DEFAULT_UNIT_ID)
+            )
+            if address_changed and find_unit_id_conflict(
+                self.hass, host, port, unit_id, exclude_entry_id=self._entry.entry_id
+            ):
+                errors[CONF_UNIT_ID] = "unit_id_in_use"
+
             if not errors:
                 return self.async_create_entry(title="Options", data=user_input)
 

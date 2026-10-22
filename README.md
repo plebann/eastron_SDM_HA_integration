@@ -2,13 +2,14 @@
 
 Version: 0.1
 
-A Home Assistant custom integration providing tiered, efficient polling of **Eastron SDM120** (initially) energy meter values over **Modbus RTU-over-TCP** using an async `pymodbus` client.
+A Home Assistant custom integration providing tiered, efficient polling of **Eastron SDM120** (initially) energy meter values over **Modbus TCP** using an async `pymodbus` client.
 
 > Phase 1 scope: SDM120 read-only core, advanced, and diagnostic measurement registers. Future phases may add SDM630, writable configuration registers, and reset services.
 
 ## Features
 
-- Async Modbus RTU-over-TCP client (no dependency on built-in HA Modbus integration)
+- Async Modbus TCP client (no dependency on built-in HA Modbus integration)
+- Meters sharing a host and port (one TCP-to-RS485 gateway) use one connection, and their requests never overlap
 - Tiered polling strategy (fast / normal / slow) based on priority matrix
 - Configurable scan interval + divisors for normal & slow tiers
 - Optional enabling of advanced & diagnostic sensor groups
@@ -26,9 +27,9 @@ Once published:
 | Field | Description | Default |
 |-------|-------------|---------|
 | Friendly Name | Base name for entities | (required) |
-| Host | RTU-over-TCP gateway IP | (required) |
+| Host | Modbus TCP gateway IP | (required) |
 | Port | TCP port | 502 |
-| Unit ID | Slave / device address | 1 |
+| Unit ID | Slave / device address; must be unique per host and port | 1 |
 | Base Scan Interval (s) | Fast tier period | 10 |
 | Normal Tier Divisor | normal tier every N fast cycles | 3 |
 | Slow Tier Divisor | slow tier every M fast cycles | 30 |
