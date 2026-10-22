@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add Eastron SDM Meter",
-        "description": "Configure RTU-over-TCP connection.",
+        "description": "Configure Modbus TCP connection.",
         "data": {
           "name": "Friendly Name",
           "host": "Host",
@@ -24,7 +24,8 @@
     "error": {
       "min_value": "Value below allowed minimum",
       "max_value": "Value above allowed maximum",
-      "invalid": "Invalid value"
+      "invalid": "Invalid value",
+      "unit_id_in_use": "Another meter on this host and port already uses this Unit ID"
     }
   },
   "options": {
@@ -52,6 +53,12 @@
           "debug": "Enables debug logging."
         }
       }
+    },
+    "error": {
+      "min_value": "Value below allowed minimum",
+      "max_value": "Value above allowed maximum",
+      "invalid": "Invalid value",
+      "unit_id_in_use": "Another meter on this host and port already uses this Unit ID"
     }
   },
   "entity": {

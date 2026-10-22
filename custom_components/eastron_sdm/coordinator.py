@@ -11,6 +11,7 @@ from typing import Iterable
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN,
@@ -32,6 +33,7 @@ from .const import (
     DEFAULT_SLOW_DIVISOR,
 )
 from .client import SdmModbusClient
+from .endpoint import async_acquire_endpoint, async_release_endpoint, find_unit_id_conflict
 from .models import get_model_specs, get_spec_by_key, RegisterSpec
 from .read_plan import ReadPlanOptions, build_read_plan
 
@@ -64,7 +66,9 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         self._serial_number: int | None = None
         self.serial_identifier: str | None = None
 
-        self._client = SdmModbusClient(self.host, self.port, self.unit_id)
+        self._endpoint = async_acquire_endpoint(hass, self.host, self.port)
+        self._endpoint_released = False
+        self._client = SdmModbusClient(self._endpoint, self.unit_id)
         self._cycle = 0
         self._failure_count = 0
         self._specs = get_model_specs(self.model)
@@ -123,7 +127,11 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             raise UpdateFailed(str(exc)) from exc
 
     async def async_close(self) -> None:
-        await self._client.close()
+        """Release the shared Modbus endpoint; it closes once its last meter is released."""
+        if self._endpoint_released:
+            return
+        self._endpoint_released = True
+        await async_release_endpoint(self.hass, self._endpoint)
 
     async def async_write_register(
         self, spec: RegisterSpec, value: int | Iterable[int], *, raw_value: float | int | None = None
@@ -131,6 +139,17 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         """Write a holding register value and react to meter_id updates."""
         if spec.function != "holding":
             raise ValueError(f"Write attempted on non-holding register {spec.key}")
+        new_unit: int | None = None
+        if spec.key == "meter_id":
+            new_unit = self._extract_unit_id(raw_value, value)
+            if new_unit is not None and new_unit != self.unit_id:
+                conflict = find_unit_id_conflict(
+                    self.hass, self.host, self.port, new_unit, exclude_entry_id=self.entry.entry_id
+                )
+                if conflict is not None:
+                    raise HomeAssistantError(
+                        f"Unit ID {new_unit} is already used by another meter on {self.host}:{self.port}"
+                    )
         if spec.length > 1:
             if isinstance(value, int):
                 raise ValueError(f"Multi-register write for {spec.key} requires {spec.length} values")
@@ -142,10 +161,8 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
             await self._client.write_holding_register(spec.address, int(value))
 
         # Sync client/unit_id when the meter address changes to avoid breaking communications.
-        if spec.key == "meter_id":
-            new_unit = self._extract_unit_id(raw_value, value)
-            if new_unit is not None:
-                await self._handle_meter_id_change(new_unit)
+        if new_unit is not None:
+            await self._handle_meter_id_change(new_unit)
 
     def _refresh_from_entry(self) -> None:
         """Refresh coordinator settings from the latest entry data/options."""
@@ -191,7 +208,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         old_unit = self.unit_id
 
         # Switch client to the new unit to validate the change on-device.
-        await self._client.set_unit_id(new_unit_id)
+        self._client.set_unit_id(new_unit_id)
         self.unit_id = new_unit_id
 
         try:
@@ -208,7 +225,7 @@ class SdmCoordinator(DataUpdateCoordinator[dict[str, DecodedValue]]):
         except Exception as exc:
             # Roll back to the previous unit id to avoid mismatched polls.
             _LOGGER.warning("Meter id change not verified; rolling back to unit %s: %s", old_unit, exc)
-            await self._client.set_unit_id(old_unit)
+            self._client.set_unit_id(old_unit)
             self.unit_id = old_unit
             self.hass.config_entries.async_update_entry(
                 self.entry,

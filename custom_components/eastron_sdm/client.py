@@ -1,15 +1,11 @@
-"""Async Modbus RTU-over-TCP client wrapper."""
+"""Per-meter Modbus client sending requests through a shared endpoint."""
 from __future__ import annotations
 
-import asyncio
-import logging
-from contextlib import suppress
 from dataclasses import dataclass
 
-from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 
-_LOGGER = logging.getLogger(__name__)
+from .endpoint import ModbusEndpoint
 
 @dataclass(slots=True)
 class ReadResult:
@@ -18,73 +14,15 @@ class ReadResult:
     registers: list[int]
 
 class SdmModbusClient:
-    """Wrapper managing a single RTU-over-TCP session."""
+    """Reads and writes registers of one Unit ID over a Modbus endpoint shared with other meters."""
 
-    def __init__(self, host: str, port: int, unit_id: int, *, timeout: float = 5.0) -> None:
-        self._host = host
-        self._port = port
+    def __init__(self, endpoint: ModbusEndpoint, unit_id: int) -> None:
+        self._endpoint = endpoint
         self._unit_id = unit_id
-        self._timeout = timeout
-        self._client: AsyncModbusTcpClient | None = None
-        self._lock = asyncio.Lock()
-        self._io_lock = asyncio.Lock()
-        self._connected = False
 
-    async def set_unit_id(self, unit_id: int) -> None:
-        """Update the Modbus unit identifier and reset the connection if it changed."""
-        if unit_id == self._unit_id:
-            return
+    def set_unit_id(self, unit_id: int) -> None:
+        """Address subsequent requests to a different Unit ID; the shared connection is untouched."""
         self._unit_id = unit_id
-        async with self._lock:
-            if self._client:
-                with suppress(Exception):
-                    await self._client.close()
-            self._connected = False
-
-    async def ensure_connected(self) -> None:
-        async with self._lock:
-            if self._connected and self._client and self._client.connected:  # type: ignore[attr-defined]
-                return
-            # Close previous if any
-            if self._client:
-                with suppress(Exception):
-                    await self._client.close()
-            # Attempt to import an RTU framer for better transaction id alignment when the
-            # device expects RTU style encapsulation over TCP (common with SDM meters via gateways).
-            framer = None
-            with suppress(Exception):  # optional
-                # pymodbus relocated framers across versions; try a few paths
-                try:
-                    from pymodbus.framer import ModbusRtuFramer as _Framer  # type: ignore
-                except Exception:  # pragma: no cover
-                    from pymodbus.transaction import ModbusRtuFramer as _Framer  # type: ignore
-                framer = _Framer
-
-            if framer:
-                self._client = AsyncModbusTcpClient(
-                    self._host,
-                    port=self._port,
-                    timeout=self._timeout,
-                    framer=framer,
-                )
-            else:
-                self._client = AsyncModbusTcpClient(
-                    self._host,
-                    port=self._port,
-                    timeout=self._timeout,
-                )
-            await self._client.connect()
-            self._connected = bool(self._client.connected)  # type: ignore[attr-defined]
-            if not self._connected:
-                raise ConnectionError("Unable to connect Modbus client")
-            _LOGGER.debug("Connected to %s:%s (unit %s)", self._host, self._port, self._unit_id)
-
-    async def close(self) -> None:
-        async with self._lock:
-            if self._client:
-                with suppress(Exception):
-                    await self._client.close()
-            self._connected = False
 
     async def read_input_registers(self, address: int, count: int) -> ReadResult:
         return await self._read_registers("read_input_registers", address, count)
@@ -99,25 +37,17 @@ class SdmModbusClient:
         await self._write_registers("write_registers", address, values)
 
     async def _read_registers(self, method_name: str, address: int, count: int) -> ReadResult:
-        async with self._io_lock:
-            await self.ensure_connected()
-            assert self._client is not None
-            method = getattr(self._client, method_name)
-            rr = await method(address=address, count=count, device_id=self._unit_id)
-            if rr.isError():  # type: ignore[attr-defined]
-                raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
-            return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
+        rr = await self._endpoint.request(method_name, self._unit_id, address=address, count=count)
+        if rr.isError():  # type: ignore[attr-defined]
+            raise ModbusIOException(f"Modbus read error @ {address} len {count}: {rr}")
+        return ReadResult(address=address, count=count, registers=rr.registers)  # type: ignore[attr-defined]
 
     async def _write_registers(self, method_name: str, address: int, values: list[int]) -> None:
         if not values:
             raise ValueError("No values provided for write")
-        async with self._io_lock:
-            await self.ensure_connected()
-            assert self._client is not None
-            method = getattr(self._client, method_name)
-            if method_name == "write_register":
-                rr = await method(address=address, value=values[0], device_id=self._unit_id)  # type: ignore[assignment]
-            else:
-                rr = await method(address=address, values=values, device_id=self._unit_id)  # type: ignore[assignment]
-            if rr.isError():  # type: ignore[attr-defined]
-                raise ModbusIOException(f"Modbus write error @ {address} len {len(values)}: {rr}")
+        if method_name == "write_register":
+            rr = await self._endpoint.request(method_name, self._unit_id, address=address, value=values[0])
+        else:
+            rr = await self._endpoint.request(method_name, self._unit_id, address=address, values=values)
+        if rr.isError():  # type: ignore[attr-defined]
+            raise ModbusIOException(f"Modbus write error @ {address} len {len(values)}: {rr}")
